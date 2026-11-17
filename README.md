@@ -8,7 +8,7 @@
 ## 访问地址
 - **沙盒预览**：https://3000-izk7p3iluz5zzlpr7d0rq-ecea8f22.sandbox.novita.ai （临时地址，沙盒休眠后失效）
 - **生产环境**：尚未部署
-- **GitHub**：尚未推送
+- **GitHub**：https://github.com/wp222hx-art/ciyun
 
 ## 已完成功能
 | 页面 | 路径 | 内容 |
