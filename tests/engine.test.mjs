@@ -258,3 +258,161 @@ test('盘中状态只取决于查询时刻：先查收盘再查盘中，结果�
       [direct.o, direct.h, direct.l, direct.last, direct.v, direct.n, direct.bars.length], inst.id);
   }
 });
+
+// ---------- 入场审批、存证链、每日波动 ----------
+const { sha256 } = await import('../public/static/js/core/sha256.js');
+const access = await import('../public/static/js/core/access.js');
+const { instDays, marketDays } = await import('../public/static/js/core/daily.js');
+const { diffBaskets } = await import('../public/static/js/core/market.js');
+const { createHash } = await import('node:crypto');
+
+test('SHA-256 与标准向量及 Node 内置实现一致', () => {
+  assert.equal(sha256(''), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+  assert.equal(sha256('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  for (const s of ['无场景不登记、无登记不交易、无合规不上架', 'x'.repeat(55), 'x'.repeat(56), 'y'.repeat(64), 'z'.repeat(1000) + '词元']) {
+    assert.equal(sha256(s), createHash('sha256').update(s).digest('hex'));
+  }
+});
+
+test('统一社会信用代码校验位', () => {
+  assert.equal(access.usccValid('91350100M000100Y43'), true);   // 国标示例
+  assert.equal(access.usccValid('91350100M000100Y44'), false);
+  assert.equal(access.usccValid('91440101000000000J'), true);   // 演示占位码
+  assert.equal(access.usccValid('9144010100000000'), false);
+  assert.equal(access.usccValid('91440101I00000000J'), false);  // 含非法字符 I
+});
+
+const FORM = { role: 'buyer', org: '湾区演示制造有限公司（虚构）', uscc: '91440101000000000J', contact: 'demo@example.com', channel: 'online',
+  materials: [true, true, true, true], pledge: true, sceneTitle: '售后知识助手', category: 'kb',
+  sceneDesc: '用于售后工程师检索产品手册与维修案例，输出带来源的回答。', pii: false, cross: false };
+
+test('入场审批：未入场不能交易；四个环节全部通过后发放编号', () => {
+  const T = 1794900000;
+  access.revoke(T);
+  assert.equal(access.canTrade(), false);
+  assert.equal(access.submit(FORM, T).ok, true);
+  assert.equal(access.submit(FORM, T).ok, false); // 审核中不能重复提交
+  const r = access.autoRun(T);
+  assert.equal(r.approved, true);
+  assert.equal(r.passed, access.STEPS.length);
+  assert.equal(access.canTrade(), true);
+  assert.match(access.st.member.no, /^SIM-RC-\d{8}-\d{4}$/);
+  assert.match(access.st.member.sceneNo, /^SIM-CJ-/);
+});
+
+test('合规会审：额度转售、未做个人信息评估都过不了，只能退回补正', () => {
+  const T = 1794900100;
+  access.revoke(T);
+  access.submit({ ...FORM, category: 'resale' }, T);
+  let r = access.autoRun(T);
+  assert.equal(r.ok, false);
+  assert.equal(r.stoppedAt, '合规会审');
+  assert.equal(r.passed, 2);
+  assert.equal(access.canTrade(), false);
+  assert.equal(access.review('return', '', T).returned, true);
+  assert.equal(access.st.app.status, 'returned');
+  assert.match(access.st.app.returnNote, /额度转售/);
+  access.submit({ ...FORM, pii: true, piiAssessed: false }, T); // 补正后从头再审
+  r = access.autoRun(T);
+  assert.equal(r.stoppedAt, '合规会审');
+  access.review('return', '请补充个人信息保护影响评估', T);
+  access.submit({ ...FORM, pii: true, piiAssessed: true }, T);
+  assert.equal(access.autoRun(T).approved, true);
+});
+
+test('形式审查：信用代码错误、材料不齐不能通过；无理由不能退回', () => {
+  const T = 1794900200;
+  access.revoke(T);
+  access.submit({ ...FORM, uscc: '91440101000000000K', materials: [true, false, true, true] }, T);
+  const r = access.review('pass', '', T);
+  assert.equal(r.ok, false);
+  assert.equal(access.checks(access.st.app.form, 'formal').filter((c) => !c.ok).length, 2);
+  access.withdraw(T);
+  access.submit(FORM, T);
+  assert.equal(access.review('return', '   ', T).ok, false); // 检查全过又不写理由
+});
+
+test('存证链：可校验；改动任何一条都会被发现', () => {
+  const v = access.verifyLedger();
+  assert.equal(v.ok, true);
+  assert.ok(v.n >= 10);
+  const forged = JSON.parse(JSON.stringify(access.st.ledger));
+  forged[3].data = { ...forged[3].data, org: '被篡改的主体' };
+  assert.deepEqual(access.verifyLedger(forged), { ok: false, at: forged[3].i, why: '内容与哈希不符' });
+  const cut = JSON.parse(JSON.stringify(access.st.ledger));
+  cut.splice(2, 1); // 删掉一条
+  assert.equal(access.verifyLedger(cut).ok, false);
+});
+
+test('上架预检用真实公开数据；只有入场的供给方能为自己的算力中心上架', () => {
+  const T = 1794900300;
+  const center = state.centers.find((c) => c.dcs.length && access.precheck(c).some((r) => r.pass));
+  const other = state.centers.find((c) => c !== center);
+  assert.ok(center, '应存在披露机房且有产品通过预检的算力中心');
+  const rows = access.precheck(center);
+  for (const r of rows) assert.equal(r.pass, r.quote.q !== 'unknown' && r.quote.st === 0 && r.quote.up1d != null && r.quote.up1d >= 95);
+  const hidden = state.centers.find((c) => !c.dcs.length);
+  assert.ok(access.precheck(hidden).every((r) => !r.pass), '未披露机房所在地的一律不通过');
+  access.revoke(T);
+  assert.equal(access.registerListings(center, T).ok, false); // 未入场
+  access.submit(FORM, T); access.autoRun(T);
+  assert.equal(access.registerListings(center, T).ok, false); // 买方不能上架
+  access.revoke(T);
+  access.submit({ ...FORM, role: 'supplier', materials: [true, true, true, true, true], category: 'serve', center: center.name }, T);
+  assert.equal(access.autoRun(T).approved, true);
+  assert.equal(access.registerListings(other, T).ok, false); // 不能替别人上架
+  const ok = access.registerListings(center, T);
+  assert.equal(ok.count, rows.filter((r) => r.pass).length);
+  assert.equal(access.registerListings(center, T).ok, false); // 不重复登记
+  assert.equal(access.verifyLedger().ok, true);
+});
+
+test('每日波动：涨跌以上一个已发布交易日为基准，留空日不参与', () => {
+  const inst = state.insts.filter((i) => i.meets).sort((a, b) => a.suppliers - b.suppliers)[0];
+  const rows = instDays(inst, NOW, Infinity);
+  let prev = null, blanks = 0;
+  for (const r of rows) {
+    if (!r.bar.pub) { blanks++; assert.equal(r.chg, null); continue; }
+    if (prev != null) {
+      assert.equal(r.chg, r.bar.c / prev - 1);
+      assert.ok(r.amp >= Math.abs(r.chg) - 1e-12 || r.bar.o !== prev); // 振幅覆盖当日区间
+    }
+    prev = r.bar.c;
+  }
+  assert.ok(blanks > 0);
+});
+
+test('每日波动：逐日家数加总等于当日在市桶数，公开统计不含被抑制的样本', () => {
+  const pool = state.insts.filter((i) => i.meets);
+  const days = marketDays(pool, NOW, 30);
+  assert.equal(days.length, 30);
+  assert.equal(days.at(-1).d, TODAY);
+  for (const d of days) {
+    assert.equal(d.adv + d.dec + d.flat + d.held + d.blank, d.rows.length);
+    assert.equal(d.vol, d.rows.reduce((s, r) => s + (r.bar.pub ? r.bar.v : 0), 0));
+    assert.ok(d.rows.length <= pool.length);
+  }
+  assert.ok(days.some((d) => d.adv > 0 && d.dec > 0));
+});
+
+test('真实报价变动比较：新增、下线、调价分别识别', () => {
+  const d = diffBaskets({ a: 1, b: 2, c: 3, f: 0 }, { a: 1, b: 2.2, d: 5, f: 0.5 });
+  assert.deepEqual(d.added, ['d']);
+  assert.deepEqual(d.removed, ['c']);
+  assert.equal(d.changed.length, 2);
+  assert.ok(Math.abs(d.changed.find((x) => x.id === 'b').chg - 0.1) < 1e-12);
+  assert.equal(d.changed.find((x) => x.id === 'f').chg, null); // 免费变收费：无法算涨跌幅
+});
+
+test('端点级调价比较：只认同一服务商同一端点；默认服务商切换不算调价', async () => {
+  const { diffEndpoints } = await import('../public/static/js/core/normalize.js');
+  const ep = (p, q, i, o, tag) => ({ p, q, tag, usd: { in: i, out: o } });
+  const prev = { m1: [ep('A', 'fp8', 1, 1), ep('B', 'fp8', 2, 2)], m2: [ep('A', 'fp8', 5, 5)], gone: [ep('A', 'fp8', 1, 1)] };
+  const cur = { m1: [ep('B', 'fp8', 2, 2), ep('A', 'fp8', 1, 1)], m2: [ep('A', 'fp8', 4, 4), ep('C', 'fp4', 3, 3)], fresh: [ep('Z', 'fp8', 1, 1)] };
+  const d = diffEndpoints(prev, cur);
+  assert.equal(d.compared, 3);            // m1 的 A、B，m2 的 A
+  assert.equal(d.changes.length, 1);      // 只有 m2 的 A 调了价；m1 两家顺序互换不算
+  assert.deepEqual(d.changes[0], { id: 'm2', p: 'A', q: 'fp8', a: 5, b: 4 });
+  assert.equal(d.added, 1);               // m2 新增 C
+  assert.equal(d.removed, 0);
+});

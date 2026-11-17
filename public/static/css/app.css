@@ -206,3 +206,45 @@ canvas.spark { display: block; width: 96px; height: 28px; }
   .inst-last { font-size: 22px; }
   .tbl th, .tbl td { padding: 7px 9px; }
 }
+
+/* 入场、每日波动、湾区特色 */
+textarea.input { resize: vertical; min-height: 64px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.fact { padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 8px; }
+.fact b { display: block; font-size: 14px; margin-bottom: 4px; }
+.fact p { color: var(--mute); font-size: 12px; }
+.fact a { font-size: 11px; }
+.pipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 12px 14px; }
+.pipe > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
+.pipe > div.done { border-color: rgba(14,203,129,.5); }
+.pipe > div.cur { border-color: var(--accent); }
+.pipe > div.back { border-color: var(--up); }
+.pipe small { display: block; color: var(--mute); margin-top: 2px; }
+.checks { list-style: none; margin: 6px 0; padding: 0; }
+.checks li { padding: 3px 0; }
+.checks li.ok::before { content: "✓ "; color: var(--down); }
+.checks li.no::before { content: "✗ "; color: var(--up); }
+.cert { margin: 12px 14px; padding: 16px 18px; border: 1px solid rgba(240,185,11,.45); border-radius: 10px; background: linear-gradient(135deg, rgba(240,185,11,.08), transparent 60%); }
+.cert h4 { font-size: 16px; margin-bottom: 10px; }
+.hash { font-family: var(--mono); font-size: 11px; color: var(--mute); }
+.mat { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 4px 14px; margin: 4px 0 12px; }
+.mat label, .inline { display: inline-flex; gap: 6px; align-items: center; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.daycells { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; padding: 12px 14px; }
+.daycells button { padding: 6px 2px; border: 1px solid transparent; border-radius: 6px; background: var(--panel2); color: #fff; cursor: pointer; font: 11px/1.35 var(--mono); }
+.daycells button.on { border-color: #fff; }
+.daycells button small { display: block; opacity: .8; }
+.matrix th, .matrix td { padding: 3px 4px !important; text-align: center !important; font: 11px var(--mono); }
+.matrix td.cell { min-width: 48px; color: #fff; }
+.matrix td:first-child, .matrix th:first-child { text-align: left !important; font: 12px inherit; position: sticky; left: 0; background: var(--panel); max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+.dist { display: flex; align-items: flex-end; gap: 8px; height: 190px; padding: 14px; }
+.dist div { flex: 1; text-align: center; font-size: 11px; color: var(--mute); }
+.dist i { display: block; border-radius: 3px 3px 0 0; min-height: 2px; margin-bottom: 4px; }
+.dist b { display: block; color: var(--text); font: 12px var(--mono); }
+@media (max-width: 820px) {
+  .pipe { grid-template-columns: 1fr 1fr; }
+  .daycells { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+}
+
+.sub-h { margin: 16px 0 8px; font-size: 13px; }
+.sub-h:first-child { margin-top: 0; }

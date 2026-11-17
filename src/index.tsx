@@ -73,8 +73,8 @@ app.get('/api/fx', async (c) => {
 app.get('/api/health', (c) => c.json({ ok: true }))
 
 const NAV = [
-  ['market', '行情'], ['trade', '交易'], ['models', '模型图谱'], ['compute', '算力中心'],
-  ['procure', '采购台'], ['assets', '资产'], ['method', '方法与边界'],
+  ['access', '入场'], ['market', '行情'], ['daily', '每日波动'], ['trade', '交易'], ['procure', '采购台'],
+  ['models', '模型图谱'], ['compute', '算力中心'], ['bay', '湾区特色'], ['assets', '资产'], ['method', '方法与边界'],
 ]
 
 app.get('/', (c) => c.html(`<!DOCTYPE html>
@@ -96,6 +96,7 @@ app.get('/', (c) => c.html(`<!DOCTYPE html>
   <nav id="main-nav">${NAV.map(([k, v]) => `<a href="#/${k}" data-nav="${k}">${v}</a>`).join('')}</nav>
   <div class="top-right">
     <button id="data-status" class="chip" type="button" title="数据来源与新鲜度">数据加载中</button>
+    <a id="member-chip" class="chip" href="#/access" title="入场状态">未入场</a>
     <a id="top-balance" class="balance" href="#/assets" title="研究记分：不可充值、不可转让、不可兑换"><span>研究记分</span><b>—</b></a>
     <time id="clock" title="北京时间">--:--:--</time>
   </div>

@@ -155,3 +155,35 @@ export const PRECISION_LABEL = {
   int4: 'INT4', int8: 'INT8', mxfp4: 'MXFP4',
 };
 export const precisionLabel = (q) => PRECISION_LABEL[q] || String(q).toUpperCase();
+
+/**
+ * 两次端点快照之间的真实调价：只比较"同一模型 × 同一服务商 × 同一精度 × 同一端点标签"。
+ * 目录级默认标价不适合做这件事——默认服务商一换，标价就变，但没有任何人调价。
+ */
+export function diffEndpoints(prev, cur) {
+  const index = (eps) => {
+    const m = new Map();
+    for (const e of eps || []) {
+      const b = basket(e.usd);
+      if (b == null || b <= 0) continue;
+      const k = `${e.p}|${e.q}|${e.tag || ''}`;
+      if (!m.has(k) || b < m.get(k).b) m.set(k, { b, p: e.p, q: e.q });
+    }
+    return m;
+  };
+  const changes = [];
+  let added = 0, removed = 0, compared = 0;
+  for (const id of Object.keys(cur)) {
+    if (!(id in prev)) continue;
+    const A = index(prev[id]), B = index(cur[id]);
+    for (const [k, v] of B) {
+      const o = A.get(k);
+      if (!o) { added++; continue; }
+      compared++;
+      if (Math.abs(v.b / o.b - 1) > 1e-9) changes.push({ id, p: v.p, q: v.q, a: o.b, b: v.b });
+    }
+    for (const k of A.keys()) if (!B.has(k)) removed++;
+  }
+  changes.sort((x, y) => Math.abs(Math.log(y.b / y.a)) - Math.abs(Math.log(x.b / x.a)));
+  return { changes, added, removed, compared };
+}

@@ -7,6 +7,32 @@ import { hashStr, mulberry32, mix } from './rng.js';
 
 export const INDEX_BASE_DAYS = 90;
 
+/** 国产模型品牌。公开目录没有"归属地"字段，这份名单是人工标注 */
+export const CN_BRANDS = new Set(['deepseek', 'qwen', 'z-ai', 'moonshotai', 'minimax', 'tencent', 'baidu', 'bytedance', 'bytedance-seed', 'xiaomi', 'stepfun', 'meituan', 'inclusionai']);
+
+/** 目录级固定篮子价（美元/百万Token）：只含精确版本 */
+export function basketMap(models) {
+  const m = new Map();
+  for (const x of models) { if (x.kind !== 'model') continue; const b = basket(x.usd); if (b != null) m.set(x.id, b); }
+  return m;
+}
+
+/** 两次真实观测之间的报价变动 */
+export function diffBaskets(prev, cur) {
+  const P = prev instanceof Map ? prev : new Map(Object.entries(prev));
+  const C = cur instanceof Map ? cur : new Map(Object.entries(cur));
+  const added = [], removed = [], changed = [];
+  for (const [id, v] of C) {
+    if (!P.has(id)) { added.push(id); continue; }
+    const b = P.get(id);
+    if (b > 0 && v > 0) { if (Math.abs(v / b - 1) > 1e-9) changed.push({ id, before: b, after: v, chg: v / b - 1 }); }
+    else if (b !== v) changed.push({ id, before: b, after: v, chg: null });
+  }
+  for (const id of P.keys()) if (!C.has(id)) removed.push(id);
+  changed.sort((x, y) => Math.abs(y.chg ?? 9) - Math.abs(x.chg ?? 9));
+  return { added, removed, changed };
+}
+
 export const state = {
   ready: false,
   snapshotAt: null,      // 端点快照时间
@@ -132,6 +158,13 @@ export async function load() {
   state.providers = snap.providers;
   state.providerByName = new Map(snap.providers.map((p) => [p.name, p]));
   state.endpoints = snap.endpoints;
+  state.snapBasket = basketMap(snap.models); // 快照时刻的真实报价，用于与实时目录比较
+  state.catalogDiff = null;
+  state.history = [];
+  try {
+    const h = await fetch('/static/data/history.json');
+    if (h.ok) { const j = await h.json(); if (Array.isArray(j.intervals)) state.history = j.intervals; }
+  } catch { /* 没有历史文件：只有一次端点快照 */ }
   rebuild(snap.models, snap.endpoints, snap.fx.rate, dayIdxOf(Date.parse(snap.asOf) / 1000));
   state.ready = true;
   return state;
@@ -163,6 +196,9 @@ export async function refreshCatalog() {
     }
     state.catalogAt = body.asOf;
     state.catalogLive = true;
+    const cur = basketMap(body.models);
+    saveObs(body.asOf, cur);
+    state.catalogDiff = { asOf: body.asOf, ...diffBaskets(state.snapBasket, cur) };
     return { ok: true, added, repriced, total: body.models.length };
   } catch (e) {
     state.catalogLive = false;
@@ -189,6 +225,27 @@ export async function fetchLiveQuotes(modelId) {
   };
 }
 
+const OBS_KEY = 'zjt.obs.v1';
+function readObs() {
+  try { const r = JSON.parse(localStorage.getItem(OBS_KEY)); if (Array.isArray(r)) return r; } catch { /* 无存储 */ }
+  return [];
+}
+/** 每个北京日保留最后一次实时目录观测，最多 10 天 */
+function saveObs(asOf, map) {
+  const day = dayIdxOf(Date.parse(asOf) / 1000);
+  const list = readObs().filter((o) => o.day !== day);
+  list.push({ day, asOf, b: Object.fromEntries(map) });
+  list.sort((a, b) => a.day - b.day);
+  try { localStorage.setItem(OBS_KEY, JSON.stringify(list.slice(-10))); } catch { /* 存不下就只保留本次会话 */ }
+}
+/** 真实观测序列：离线快照 + 本机此后每天的实时目录。相邻两次之间的差异就是真实的报价变动 */
+export function observations() {
+  const snapAt = Date.parse(state.snapshotAt);
+  const out = [{ asOf: state.snapshotAt, kind: '离线快照', b: state.snapBasket }];
+  for (const o of readObs()) if (Date.parse(o.asOf) > snapAt) out.push({ asOf: o.asOf, kind: '实时目录', b: new Map(Object.entries(o.b)) });
+  return out;
+}
+
 /** 研究性参考指数：只纳入达到供应商门槛的主桶 */
 export function indices(nowSec) {
   const today = dayIdxOf(nowSec);
@@ -200,6 +257,7 @@ export function indices(nowSec) {
     all: buildIndex(pool, today, base),
     open: buildIndex(pool.filter((i) => i.open), today, base),
     closed: buildIndex(pool.filter((i) => !i.open), today, base),
+    cn: buildIndex(pool.filter((i) => CN_BRANDS.has(i.brand)), today, base),
   };
   return state.indices;
 }

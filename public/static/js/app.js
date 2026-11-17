@@ -1,9 +1,13 @@
 // 入口：加载数据 → 路由 → 每秒推进仿真时钟
 import * as market from './core/market.js';
 import * as account from './core/account.js';
+import * as access from './core/access.js';
 import { $, $$, esc, toast, fmtNum, fmtTime, fmtIso, nowSec, ago } from './ui.js';
 
 const loaders = {
+  access: () => import('./views/access.js'),
+  daily: () => import('./views/daily.js'),
+  bay: () => import('./views/bay.js'),
   market: () => import('./views/market.js'),
   trade: () => import('./views/trade.js'),
   models: () => import('./views/models.js'),
@@ -32,9 +36,12 @@ async function route() {
   try {
     const mod = await loaders[name]();
     if (my !== token) return;
-    view.className = `v-${name}`;
-    view.innerHTML = '';
-    current = mod.mount(view, args) || {};
+    // 每次进入页面都换一个新容器：旧页面挂在容器上的事件监听随容器一起丢弃。
+    // 否则同一页面进入两次，一次点击会被处理两次（例如签出两份合同）。
+    const root = document.createElement('div');
+    root.className = `v-${name}`;
+    view.replaceChildren(root);
+    current = mod.mount(root, args) || {};
     window.scrollTo(0, 0);
   } catch (e) {
     console.error(e);
@@ -48,6 +55,14 @@ function paintStatus() {
   el.className = `chip ${s.catalogLive ? 'live' : 'stale'}`;
   el.textContent = s.catalogLive ? `目录实时 · 端点快照 ${ago(s.snapshotAt)}` : `公开目录快照 ${ago(s.snapshotAt)}`;
   el.title = `模型目录：${s.catalogLive ? '实时拉取' : '离线快照'}（${fmtIso(s.catalogAt)}）\n服务商端点快照：${fmtIso(s.snapshotAt)}\n汇率 USD/CNY ${s.fx.rate}（${fmtIso(s.fx.asOf)}）`;
+}
+
+function paintMember() {
+  const el = $('#member-chip');
+  const m = access.st.member, a = access.st.app;
+  el.className = `chip ${m ? 'live' : 'stale'}`;
+  el.textContent = m ? `已入场 · ${access.ROLES[m.role].short}` : a && a.status === 'reviewing' ? `审核中 · ${access.STEPS[a.step].name}` : a && a.status === 'returned' ? '已退回 · 待补正' : '未入场';
+  el.title = m ? `入场编号 ${m.no}\n场景登记号 ${m.sceneNo}（演示编号，非真实登记凭证）` : '尚未取得入场资格：无登记不交易';
 }
 
 function paintBalance(now) {
@@ -74,6 +89,8 @@ async function boot() {
   paintStatus();
   $('#data-status').addEventListener('click', () => { location.hash = '#/method'; });
   account.onChange(() => paintBalance(nowSec()));
+  access.onChange(paintMember);
+  paintMember();
   window.addEventListener('hashchange', route);
   await route();
   loop();

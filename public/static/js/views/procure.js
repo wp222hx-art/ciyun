@@ -3,6 +3,7 @@
 import * as sim from '../core/sim.js';
 import * as market from '../core/market.js';
 import * as account from '../core/account.js';
+import * as access from '../core/access.js';
 import { hashStr, mix, mulberry32, gauss } from '../core/rng.js';
 import { $, $$, esc, fmtPx, fmtPct, fmtNum, fmtInt, fmtDateTime, fmtIso, toast, nowSec, REAL, SYN, tag } from '../ui.js';
 
@@ -70,6 +71,7 @@ export function mount(el) {
   el.innerHTML = `
   <div class="page-head"><h2>采购台</h2>
     <p>买的是可交付的服务，不是涨跌。提出业务需求，在真实公开报价里筛出能满足约束的供给，比较"单合格任务有效成本"，签约、履约计量、验收后再结算。</p></div>
+  ${access.canTrade() ? '' : '<p class="hint warn" style="margin:0 0 12px">尚未取得入场资格：可以询价和比较，但签约前须先完成入场申请与审批。<a href="#/access">前往入场 →</a></p>'}
   <div class="steps" id="steps"></div>
   <section class="panel" style="margin-bottom:12px">
     <header><h3>① 提交采购需求</h3></header>
@@ -157,7 +159,7 @@ export function mount(el) {
         <td class="num">${fmtInt(c.volume)}</td><td class="num">${c.unit.toFixed(4)}</td><td>${STATUS[c.status]}</td>
         <td>${c.status === 'signed' ? `<button class="btn sm primary" data-deliver="${c.id}">模拟一个账期履约</button>` : c.status === 'delivered' ? `<button class="btn sm primary" data-settle="${c.id}">验收并结算</button>` : `<span class="mute small">${fmtDateTime(c.settledAt).slice(5, 16)} 结算</span>`}</td></tr>${c.bill ? billHtml(c) : ''}`).join('')}
       </tbody></table></div>
-      <p class="pad mute small">合同编号只用于履约追踪，不可转让、不可分割、不承诺升值。签约时冻结费率与规格快照；履约出账后先验收，再结算，两步分开。</p>`
+      <p class="pad mute small">合同编号只用于履约追踪，不可转让、不可分割、不承诺升值。签约时冻结费率与规格快照；履约出账后先验收，再结算，两步分开。签约、出账、结算三个环节都写入存证链，可在"入场"页校验。</p>`
       : '<p class="empty">还没有合同。发起询价并签约后，这里显示履约、计量与账单。</p>';
     paintSteps();
   }
@@ -182,12 +184,16 @@ export function mount(el) {
     const s = e.target.closest('[data-sign]');
     if (s) {
       if (!rfq || now > rfq.validUntil) return toast('报价已过期，不能按过期价格签约。请重新询价。', 'error');
+      const m = access.st.member;
+      if (!m) return toast('尚未取得入场资格：无登记不交易。请先到"入场"完成申请与审批。', 'error');
+      if (m.role === 'supplier') return toast('当前以供给方角色入场，不能作为买方签约。', 'error');
       const r = rfq.rows[Number(s.dataset.sign)];
       const c = account.addContract({
         status: 'signed', t: now, instId: r.inst.id, modelName: r.inst.name, qLabel: r.inst.qLabel, provider: r.q.p,
         task: { ...rfq.task }, volume: rfq.form.volume, rates: { in: r.q.cny.in, out: r.q.cny.out }, pass: r.pass, unit: r.unit,
-        monthly: r.monthly, quotedAt: rfq.t, snapshotAt: S.snapshotAt,
+        monthly: r.monthly, quotedAt: rfq.t, snapshotAt: S.snapshotAt, sceneNo: m.sceneNo,
       });
+      access.log('contract.sign', m.org, `合同#${c.id}`, { provider: r.q.p, inst: r.inst.id, sceneNo: m.sceneNo, digest: access.digest({ rates: c.rates, volume: c.volume, task: c.task.id }) }, now);
       toast(`已签约合同 #${c.id}：${r.inst.name} · ${r.q.p}，费率与规格已冻结`, 'ok');
       return;
     }
@@ -195,6 +201,7 @@ export function mount(el) {
     if (d) {
       const c = account.acct.contracts.find((x) => x.id === Number(d.dataset.deliver));
       const r = account.deliverContract(c.id, simulateBill(c), now);
+      if (r.ok) access.log('contract.deliver', c.provider, `合同#${c.id}`, { qualified: c.bill.qualified, total: c.bill.total, digest: access.digest(c.bill) }, now);
       toast(r.ok ? `合同 #${c.id} 已出账，请核对计量后验收` : r.error, r.ok ? 'ok' : 'error');
       return;
     }
@@ -203,6 +210,7 @@ export function mount(el) {
       const id = Number(st.dataset.settle);
       const c = account.acct.contracts.find((x) => x.id === id);
       const r = account.settleContract(id, now);
+      if (r.ok) access.log('contract.settle', access.st.member?.org || '买方', `合同#${id}`, { total: c.bill.total }, now);
       toast(r.ok ? `合同 #${id} 已验收，结算 ${fmtNum(c.bill.total)} 研究记分` : r.error, r.ok ? 'ok' : 'error');
     }
   });

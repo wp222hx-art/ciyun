@@ -1,8 +1,8 @@
 // 拉取公开目录的离线快照：模型目录 + 服务商名录 + 每个模型的部署端点 + 汇率
 // 用法：node scripts/snapshot.mjs
 // 产物：public/static/data/snapshot.json（上游不可达时页面以此兜底，并显示快照时间）
-import { writeFile, mkdir } from 'node:fs/promises';
-import { normalizeModel, normalizeEndpoint, normalizeProvider } from '../public/static/js/core/normalize.js';
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
+import { normalizeModel, normalizeEndpoint, normalizeProvider, diffEndpoints } from '../public/static/js/core/normalize.js';
 
 const OR = 'https://openrouter.ai/api/v1';
 const FX = 'https://open.er-api.com/v6/latest/USD';
@@ -63,6 +63,24 @@ const snapshot = {
 await mkdir(new URL('../public/static/data/', import.meta.url), { recursive: true });
 const out = new URL('../public/static/data/snapshot.json', import.meta.url);
 const body = JSON.stringify(snapshot);
+
+// 与上一份快照比较，把真实调价记入 history.json（最多保留 30 个观测区间）
+const histUrl = new URL('../public/static/data/history.json', import.meta.url);
+const readJson = async (u) => { try { return JSON.parse(await readFile(u, 'utf8')); } catch { return null; } };
+const prev = await readJson(out);
+if (prev && prev.asOf !== snapshot.asOf && prev.endpoints) {
+  const d = diffEndpoints(prev.endpoints, endpoints);
+  const before = new Set(prev.models.map((m) => m.id)), after = new Set(models.map((m) => m.id));
+  const hist = (await readJson(histUrl)) || { intervals: [] };
+  hist.intervals.push({
+    from: prev.asOf, to: snapshot.asOf, compared: d.compared, epAdded: d.added, epRemoved: d.removed,
+    modelsAdded: [...after].filter((x) => !before.has(x)), modelsRemoved: [...before].filter((x) => !after.has(x)),
+    changes: d.changes.slice(0, 400), totalChanges: d.changes.length,
+  });
+  hist.intervals = hist.intervals.slice(-30);
+  await writeFile(histUrl, JSON.stringify(hist));
+  console.log(`与上一份快照（${prev.asOf}）比较：同端点 ${d.compared} 个，其中调价 ${d.changes.length} 个；新增端点 ${d.added}，下线端点 ${d.removed}`);
+}
 await writeFile(out, body);
 
 const epCount = Object.values(endpoints).reduce((s, e) => s + e.length, 0);

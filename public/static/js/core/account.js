@@ -2,6 +2,7 @@
 // 研究记分不可充值、不可转让、不可兑换（方案 §08）；数据只保存在本浏览器
 import * as sim from './sim.js';
 import { state as mkt } from './market.js';
+import { canTrade } from './access.js';
 
 const KEY = 'zjt.account.v1';
 export const INITIAL = 100000;
@@ -107,6 +108,7 @@ export function quoteMarket(inst, side, qty, now) {
 export function placeOrder({ instId, side, type, price, qty }, now) {
   const inst = mkt.instById.get(instId);
   if (!inst) return fail('品种不存在');
+  if (!canTrade()) return fail('尚未取得入场资格：无登记不交易。请先到"入场"完成申请与审批。');
   if (!inst.meets) return fail('该桶独立供应商不足 3 家，只提供报价，不开放仿真撮合');
   qty = Math.floor(Number(qty));
   if (!(qty >= 1)) return fail('数量至少为 1 百万Token');

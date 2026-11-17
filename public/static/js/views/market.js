@@ -58,7 +58,7 @@ export function mount(el) {
 
   // ---------- 指数 ----------
   const chart = makeChart($('#idx-chart', el));
-  const lines = [['all', '综合', COLOR.accent], ['open', '开放权重', COLOR.down], ['closed', '闭源', COLOR.gold]].map(([k, title, color]) => {
+  const lines = [['all', '综合', COLOR.accent], ['open', '开放权重', COLOR.down], ['closed', '闭源', COLOR.gold], ['cn', '国产', '#c26bff']].map(([k, title, color]) => {
     const s = addLine(chart, color, IDX_FMT, { title, lineWidth: 2, lastValueVisible: true });
     s.setData(ix[k].series.map((p) => ({ time: fmtDay(p.d), value: p.v })));
     return { k, s };
@@ -78,6 +78,7 @@ export function mount(el) {
       card('推理参考价格指数', 'all', `${ix.all.members} 个桶`) +
       card('开放权重指数', 'open', `${ix.open.members} 个桶`) +
       card('闭源模型指数', 'closed', `${ix.closed.members} 个桶`) +
+      card('国产模型指数', 'cn', `${ix.cn.members} 个桶`) +
       `<div class="card"><h4>供需景气指标</h4><p class="big">${pros == null ? '—' : pros.toFixed(1)}</p><p class="sub">今日样本数 ÷ 按日内节律的预期 × 100</p></div>`;
     for (const { k, s } of lines) { const v = ix[k].now(now); if (v != null) s.update({ time: today, value: v }); }
   }

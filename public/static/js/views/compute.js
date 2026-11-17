@@ -139,6 +139,14 @@ function mountDetail(el, name) {
   if (!c) { el.innerHTML = `<p class="empty">没有找到算力中心"${esc(name)}"。<a href="#/compute">返回列表</a></p>`; return {}; }
   const today = sim.dayIdxOf(nowSec());
   const rows = [...c.rows].sort((a, b) => a.rank - b.rank || b.inst.suppliers - a.inst.suppliers);
+  const real = S.history.flatMap((v) => v.changes.filter((x) => x.p === c.name).map((x) => ({ ...x, from: v.from, to: v.to })));
+  const span = S.history.length ? `${fmtIso(S.history[0].from)} → ${fmtIso(S.history.at(-1).to)}` : '';
+  const realHtml = !S.history.length ? '' : `<section class="panel" style="margin-bottom:12px">
+    <header><h3>该中心的真实调价</h3>${REAL}<span class="mute small">同一端点前后两次快照 · ${span}</span></header>
+    ${real.length ? `<div class="table-wrap"><table class="tbl dense"><thead><tr><th>模型</th><th>精度</th><th class="num">原固定篮子价</th><th class="num">现固定篮子价</th><th class="num">变动</th><th>观测区间</th></tr></thead><tbody>
+    ${real.slice(0, 30).map((x) => `<tr><td>${esc(S.modelById.get(x.id)?.name || x.id)}</td><td>${esc(x.q === 'unknown' ? '未声明' : x.q.toUpperCase())}</td><td class="num">${fmtPx(x.a * S.fx.rate)}</td><td class="num">${fmtPx(x.b * S.fx.rate)}</td><td class="num ${dir(x.b - x.a)}">${fmtPct(x.b / x.a - 1)}</td><td class="small">${fmtIso(x.from).slice(5)} → ${fmtIso(x.to).slice(5)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="empty">这段时间内，该中心没有调价。</p>'}
+  </section>`;
 
   el.innerHTML = `
   <div class="page-head"><p><a href="#/compute">← 算力中心</a></p><h2 style="margin-top:6px">${esc(c.name)}</h2><p>${where(c)}${c.listed ? '' : ' · 未出现在服务商名录中'}</p></div>
@@ -148,6 +156,7 @@ function mountDetail(el, name) {
     <div class="card"><h4>报价溢价中位</h4><p class="big">${c.premium == null ? '—' : fmtPct(c.premium, 0)}</p><p class="sub">相对各桶最低报价</p></div>
     <div class="card"><h4>平均近1日可用率</h4><p class="big">${c.uptime == null ? '—' : `${c.uptime.toFixed(1)}%`}</p><p class="sub">${c.degraded ? `${c.degraded} 个端点处于降级状态` : '无降级端点'}</p></div>
   </div>
+  ${realHtml}
   <section class="panel" style="margin-bottom:12px">
     <header><h3>该中心所服务桶的报价指数</h3>${SYN}<span class="sp"></span><span class="mute small">${BACK} 天前 = 100 · 仅最右一点基于真实报价</span></header>
     <div class="chart" id="c-chart" style="height:220px"></div>

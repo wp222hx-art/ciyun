@@ -3,14 +3,16 @@ import * as sim from '../core/sim.js';
 import * as market from '../core/market.js';
 import * as account from '../core/account.js';
 import { THRESHOLD } from '../core/normalize.js';
+import * as access from '../core/access.js';
+import { instDays } from '../core/daily.js';
 import { $, $$, esc, fmtPx, fmtPct, fmtQty, fmtMoney, fmtNum, fmtCtx, fmtTime, fmtDay, fmtIso, ago, dir, chips, toast, nowSec, SYN, REAL, COLOR, debounce } from '../ui.js';
 import { makeChart, addCandles, addLine, sma, MA_SET, priceFormat } from '../chart.js';
 import { ordersTable, positionsTable, fillsTable, bindActions } from './shared.js';
 
-const prefs = { id: null, view: 'trade', tf: 'D', task: 'kb', side: 'buy', type: 'limit', tab: 'open' };
+const prefs = { id: null, view: 'trade', tf: 'D', task: 'kb', side: 'buy', type: 'limit', tab: 'days' };
 const VIEWS = [['trade', '成交K线'], ['quote', '报价视图'], ['cost', '任务成本']];
 const TFS = [['1', '1分', 1, 1], ['5', '5分', 5, 2], ['15', '15分', 15, 4], ['60', '1时', 60, 10], ['D', '日线'], ['W', '周线']];
-const TABS = [['open', '当前委托'], ['pos', '持仓'], ['hist', '历史委托'], ['fills', '成交记录']];
+const TABS = [['days', '每日明细'], ['open', '当前委托'], ['pos', '持仓'], ['hist', '历史委托'], ['fills', '成交记录']];
 const DAYSEC = 86400;
 
 function defaultInst() {
@@ -304,6 +306,13 @@ export function mount(el, args) {
       $('#o-amt', el).textContent = '—'; $('#o-fee', el).textContent = '—';
       return;
     }
+    if (!access.canTrade()) {
+      submit.disabled = true;
+      hint.className = 'hint warn';
+      hint.innerHTML = '尚未取得入场资格。按"无登记不交易"，先完成入场申请与审批才能下单。<a href="#/access">前往入场 →</a>';
+      $('#o-amt', el).textContent = '—'; $('#o-fee', el).textContent = '—';
+      return;
+    }
     const qty = Math.floor(Number(qtyIn.value));
     let amt = null, extra = '';
     if (qty >= 1) {
@@ -372,7 +381,7 @@ export function mount(el, args) {
       const where = c ? `${market.flagOf(c.hq)} ${esc(market.regionName(c.hq))}${c.dcs.length ? ` / ${c.dcs.map(esc).join('·')}` : ''}` : '<span class="mute">未披露</span>';
       const was = snap.get(x.p);
       const moved = liveMode && was != null && Math.abs(x.basket / was - 1) > 1e-9 ? `<span class="${dir(x.basket - was)} small"> ${fmtPct(x.basket / was - 1)} 较快照</span>` : liveMode && was == null ? '<span class="ev ev-real">新增</span>' : '';
-      return `<tr><td><a href="#/compute/${encodeURIComponent(x.p)}">${esc(x.p)}</a>${x.p === inst.anchorProvider ? '<span class="chip sm">价格锚</span>' : ''}</td><td>${where}</td><td>${esc(x.q === 'unknown' ? '未声明' : x.q.toUpperCase())}</td>
+      return `<tr><td><a href="#/compute/${encodeURIComponent(x.p)}">${esc(x.p)}</a>${x.p === inst.anchorProvider ? '<span class="chip sm">价格锚</span>' : ''}${access.isListed(inst.id, x.p) ? '<span class="chip sm open">已登记</span>' : ''}</td><td>${where}</td><td>${esc(x.q === 'unknown' ? '未声明' : x.q.toUpperCase())}</td>
         <td class="num">${fmtCtx(x.ctx)}</td><td class="num">${fmtPx(x.cny.in)}</td><td class="num">${fmtPx(x.cny.out)}</td><td class="num">${x.cny.cr == null ? '—' : fmtPx(x.cny.cr)}</td>
         <td class="num"><b>${fmtPx(x.basket)}</b>${moved}</td><td class="num">${x.basket === min ? '最低' : fmtPct(x.basket / min - 1, 1)}</td>
         <td class="num">${x.up1d == null ? '—' : `${x.up1d.toFixed(1)}%`}</td><td>${x.ok ? '<span class="down small">合格</span>' : `<span class="up small">${x.st !== 0 ? '降级' : '可用率不足'}</span>`}</td></tr>`;
@@ -394,6 +403,20 @@ export function mount(el, args) {
     btn.disabled = false; btn.textContent = '拉取实时报价';
   });
 
+  // ---------- 每日明细 ----------
+  function daysTable(now) {
+    if (!inst.meets) return '<p class="empty">该桶未达发布门槛，不发布日度成交统计。</p>';
+    const rows = instDays(inst, now, 30).reverse();
+    return `<div class="table-wrap"><table class="tbl dense"><thead><tr><th>日期</th><th class="num">开</th><th class="num">高</th><th class="num">低</th><th class="num">收</th><th class="num">日涨跌</th><th class="num">振幅</th><th class="num">交付量</th><th class="num">样本</th><th class="num">供应 / 买方</th><th>状态</th></tr></thead><tbody>${rows.map((r) => {
+      const b = r.bar;
+      if (!b.pub) return `<tr><td class="num">${fmtDay(r.d)}</td><td colspan="9" class="mute">留空：${esc(b.why || '无成交样本')}</td><td class="mute small">${b.live ? '盘中' : '不发布'}</td></tr>`;
+      return `<tr><td class="num">${fmtDay(r.d)}</td><td class="num">${px(b.o)}</td><td class="num">${px(b.h)}</td><td class="num">${px(b.l)}</td><td class="num ${dir(r.chg)}">${px(b.c)}</td>
+        <td class="num ${dir(r.chg)}">${fmtPct(r.chg)}</td><td class="num">${r.amp == null ? '—' : `${(r.amp * 100).toFixed(2)}%`}</td><td class="num">${fmtQty(b.v)}</td><td class="num">${b.n}</td><td class="num">${b.sup} / ${b.buy}</td>
+        <td class="small">${b.live ? '<span class="up">盘中</span>' : b.n === 1 ? '单样本' : '已发布'}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <p class="pad mute small">最近 30 天。日涨跌 = 当日收盘 ÷ 上一个已发布交易日的收盘 − 1；振幅 =（最高 − 最低）÷ 同一基准。留空的日子不算涨跌，也不作为下一日的比较基准。全部为仿真成交。</p>`;
+  }
+
   // ---------- 委托与持仓 ----------
   function paintBottom(now) {
     $$('#btabs button', el).forEach((b) => b.classList.toggle('on', b.dataset.btab === prefs.tab));
@@ -404,7 +427,8 @@ export function mount(el, args) {
     $('#bottom', el).innerHTML = prefs.tab === 'open' ? ordersTable(open)
       : prefs.tab === 'pos' ? positionsTable(now)
       : prefs.tab === 'hist' ? ordersTable(A.orders.filter((o) => o.status !== 'open').slice(0, 50))
-      : fillsTable(A.fills.slice(0, 50));
+      : prefs.tab === 'fills' ? fillsTable(A.fills.slice(0, 50))
+      : daysTable(now);
   }
   $('#btabs', el).addEventListener('click', (e) => {
     const b = e.target.closest('[data-btab]');
@@ -459,7 +483,7 @@ export function mount(el, args) {
       paintHead(now); paintBook(now); tickChart(now);
       if (prefs.type === 'market') paintForm(now);
       if (++n % 5 === 0) {
-        if (prefs.tab === 'pos') paintBottom(now);
+        if (prefs.tab === 'pos' || prefs.tab === 'days') paintBottom(now);
         paintStrip(now);
         if (chart && prefs.view === 'trade' && !isIntra()) {
           const rows = tradeRows(now);
