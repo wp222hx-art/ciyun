@@ -2,18 +2,19 @@
 // 流程为拟议设想的仿真，由使用者自己扮演审核方；编号带 SIM 前缀，非真实登记凭证
 import * as market from '../core/market.js';
 import * as access from '../core/access.js';
-import { $, esc, fmtDateTime, fmtPx, toast, nowSec, tag, REAL } from '../ui.js';
+import { $, esc, fmtDateTime, fmtPx, toast, nowSec, tag, REAL, confirmDialog } from '../ui.js';
 import { factCards } from '../facts.js';
 
 let draft = null;
 let verifyMsg = '';
 const clone = (o) => JSON.parse(JSON.stringify(o));
-const defaults = () => ({ role: 'buyer', org: '', uscc: '', contact: '', channel: 'online', materials: [], pledge: false, sceneTitle: '', category: '', sceneDesc: '', pii: false, piiAssessed: false, cross: false, crossReady: false, center: '' });
+const defaults = () => ({ role: 'buyer', region: 'CN', org: '', uscc: '', contact: '', channel: 'online', materials: [], pledge: false, sceneTitle: '', category: '', sceneDesc: '', pii: false, piiAssessed: false, cross: false, crossReady: false, center: '' });
 const PLAN = tag('syn', '拟议流程');
 const CHANNEL_NOTE = { online: '在本页填表提交', base: '对应"一所、多基地"：区域服务基地协助准备材料并代为提交', broker: '由数据经纪人辅导合规、推荐入场' };
 
 function demoData(role, S) {
   const base = { ...defaults(), role, org: '湾区演示制造有限公司（虚构）', uscc: '91440101000000000J', contact: 'demo@example.com', materials: access.ROLES[role].materials.map(() => true), pledge: true };
+  if (role === 'creator') return { ...base, region: 'MO', org: '示例片方甲（虚构）', uscc: 'SIM-MO-0001', sceneTitle: 'AI 辅助短片海外许可', category: 'license', sceneDesc: '持有具有人类编剧与剪辑记录的 AI 辅助短片，向合格海外发行方授予限定地域、语言、渠道和期限的许可。' };
   if (role === 'supplier') {
     const c = S.centers.find((x) => x.dcs.length && access.precheck(x).some((r) => r.pass));
     return { ...base, org: '湾区演示算力有限公司（虚构）', sceneTitle: '推理服务供给', category: 'serve', center: c ? c.name : '', sceneDesc: '向已入场的企业买方提供可计量、可核验的文本推理服务，按分项用量出账。' };
@@ -25,21 +26,25 @@ function demoData(role, S) {
 export function mount(el) {
   const S = market.state;
   el.innerHTML = `
-  <div class="page-head"><h2>入场与审批</h2>
-    <p>想在场内交易或上架，先过交易所这道门。下面按广东公开确立的"无场景不登记、无登记不交易、无合规不上架"，把入场做成一条可以走一遍的流程：选入口、交材料、登记场景、合规会审、发编号，每一步都留痕。</p></div>
-  <div class="facts">${factCards()}</div>
+  <div class="page-head"><h2>入场审批 ${PLAN}</h2>
+    <p>想在中心挂牌、询价或下单，先完成主体登记。全球网络不是匿名责任网络：每个主体都要说清自己是谁、谁是受益所有人、打算拿服务做什么。下面把入场做成一条可以走一遍的流程——选角色和入口、交材料、登记场景、合规会审、发编号，每一步都留痕。</p></div>
   <section class="panel" style="margin-bottom:12px">
     <header><h3>审批流程：四个环节</h3>${PLAN}<span class="sp"></span><span class="mute small">三条入口，同一套审批</span></header>
     <div id="pipe"></div>
-    <p class="pad mute small">环节、材料和时限是我们按上面的公开原则设计的设想，尚未取得广州数据交易所的业务规则，不代表其实际流程。演示里没有真人审核：由你自己点"通过"或"退回"，检查项不合格时系统不允许通过。</p>
+    <p class="pad mute small">环节、材料和时限是我们参照公开原则设计的设想：不是广州数据交易所的业务规则，也不是澳门任何主管机关的要求。真实的 KYB／KYC、制裁及 PEP 筛查须由责任主体按适用法律实施，这里没有做。演示里没有真人审核：由你自己点"通过"或"退回"，检查项不合格时系统不允许通过。</p>
   </section>
   <section class="panel" id="main" style="margin-bottom:12px"></section>
   <section class="panel" id="listing" style="margin-bottom:12px" hidden></section>
   <section class="panel" style="margin-bottom:12px">
-    <header><h3>三类入场角色</h3>${PLAN}</header>
+    <header><h3>四类入场角色</h3>${PLAN}</header>
     <div class="table-wrap"><table class="tbl"><thead><tr><th>角色</th><th>定位</th><th>申请材料</th><th>入场后可以</th></tr></thead><tbody>
     ${Object.values(access.ROLES).map((r) => `<tr><td><b>${r.name}</b></td><td>${r.desc}</td><td class="small">${r.materials.join('、')}</td><td>${r.unlock}</td></tr>`).join('')}
     </tbody></table></div>
+  </section>
+  <section class="panel" style="margin-bottom:12px">
+    <header><h3>设计参照：广东公开确立的数据流通原则</h3><span class="mute small">公开事实 · 每条附来源</span></header>
+    <div class="facts" style="padding:12px 14px 0;margin-bottom:0">${factCards()}</div>
+    <p class="pad mute small">上面的审批环节借鉴了这些公开原则的思路。澳门词元中心是拟议名称，不是广州数据交易所的澳门分支，没有取得其品牌授权、业务规则或接口；列在这里只说明设计出处。</p>
   </section>
   <section class="panel" id="ledger"></section>`;
 
@@ -68,7 +73,8 @@ export function mount(el) {
         <label class="field"><span>入场角色</span><select class="input" name="role">${Object.entries(access.ROLES).map(([k, r]) => opt(k, r.name, f.role)).join('')}</select></label>
         <label class="field"><span>入口</span><select class="input" name="channel">${Object.entries(access.CHANNELS).map(([k, v]) => opt(k, v, f.channel)).join('')}</select></label>
         <label class="field"><span>主体名称</span><input class="input" name="org" value="${esc(f.org)}" placeholder="企业全称"></label>
-        <label class="field"><span>统一社会信用代码<em class="mute">18 位，校验位须正确</em></span><input class="input mono" name="uscc" value="${esc(f.uscc)}" maxlength="18"></label>
+        <label class="field"><span>主体注册地</span><select class="input" name="region">${Object.entries(access.REGIONS).map(([k, v]) => opt(k, v, f.region || 'CN')).join('')}</select></label>
+        <label class="field"><span>${(f.region || 'CN') === 'CN' ? '统一社会信用代码<em class="mute">18 位，校验位须正确</em>' : '商业登记编号<em class="mute">演示不校验格式</em>'}</span><input class="input mono" name="uscc" value="${esc(f.uscc)}" maxlength="${(f.region || 'CN') === 'CN' ? 18 : 32}"></label>
         <label class="field"><span>联系邮箱</span><input class="input" name="contact" type="email" value="${esc(f.contact)}"></label>
       </div>
       <p class="mute small">${role.desc}。入口说明：${Object.entries(access.CHANNELS).map(([k, v]) => `${v}——${CHANNEL_NOTE[k]}`).join('；')}。</p>
@@ -122,15 +128,16 @@ export function mount(el) {
     <div class="cert" id="cert">
       <h4>入场登记凭证</h4>
       <div class="dl">
-        ${kv('入场编号', esc(m.no))}${kv('场景登记号', esc(m.sceneNo))}${kv('主体名称', esc(m.org))}${kv('统一社会信用代码', esc(m.uscc))}
+        ${kv('入场编号', esc(m.no))}${kv('场景登记号', esc(m.sceneNo))}${kv('主体名称', esc(m.org))}${kv('注册地', access.REGIONS[m.region || 'CN'])}${kv((m.region || 'CN') === 'CN' ? '统一社会信用代码' : '商业登记编号', esc(m.uscc))}
         ${kv('入场角色', access.ROLES[m.role].name)}${kv('入口', access.CHANNELS[m.channel] || '—')}${kv('登记场景', esc(m.sceneTitle))}${kv('用途类别', cat ? cat.name : '—')}
         ${m.center ? kv('登记的算力中心', esc(m.center)) : ''}${kv('登记时间', fmtDateTime(m.approvedAt))}
       </div>
       <p class="hash" style="margin-top:10px">存证哈希 ${reg ? reg.hash : '（记录已滚动出本机存证链）'}</p>
-      <p class="mute small" style="margin-top:6px">编号带 SIM 前缀，是本仿真环境生成的演示编号，不是广州数据交易所签发的登记凭证，不具任何效力。</p>
+      <p class="mute small" style="margin-top:6px">编号带 SIM 前缀，是本仿真环境生成的演示编号，不是任何交易所或主管机关签发的登记凭证，不具任何效力。</p>
     </div>
     <div class="pad btn-row" style="padding-top:0">
-      ${m.role === 'supplier' ? '<span class="mute small">下方可为登记的算力中心做上架预检。</span>' : '<a class="btn primary" href="#/procure">去采购台签约</a>'}
+      ${m.role === 'supplier' ? '<span class="mute small">下方可为登记的算力中心做上架预检。</span>' : m.role === 'creator' ? '<a class="btn primary" href="#/listing/new">去新建挂牌</a>' : '<a class="btn primary" href="#/procure">去采购台签约</a>'}
+      <a class="btn" href="#/listing">去挂牌大厅</a>
       <a class="btn" href="#/trade">去交易仿真</a>
       <button class="btn danger" type="button" data-act="revoke">撤销入场资格</button>
     </div>`;
@@ -157,13 +164,13 @@ export function mount(el) {
   function renderLedger() {
     const L = access.st.ledger;
     const label = (e) => `${access.EVENTS[e.type] || e.type}${e.type === 'access.pass' || e.type === 'access.return' ? ` · ${access.STEPS.find((s) => s.id === e.data.step)?.name || ''}` : ''}`;
-    $('#ledger', el).innerHTML = `<header><h3>存证链</h3><span class="mute small">${L.length} 条 · 每条的哈希包含上一条的哈希</span><span class="sp"></span>
+    $('#ledger', el).innerHTML = `<header><h3>存证链</h3><span class="mute small">${L.length} 条 · 每条的哈希包含上一条的哈希 · <a href="#/evidence">批次承诺与包含性证明见溯源存证</a></span><span class="sp"></span>
       <button class="btn sm" type="button" data-act="verify">校验存证链</button><button class="btn sm" type="button" data-act="tamper"${L.length < 2 ? ' disabled' : ''}>模拟篡改后再校验</button></header>
     <p class="pad" id="verify-out" style="padding-bottom:0">${verifyMsg || '<span class="mute">点"校验存证链"逐条重算哈希；"模拟篡改"会在一份副本里改动一条记录，看能不能被查出来。</span>'}</p>
     ${L.length ? `<div class="table-wrap"><table class="tbl dense"><thead><tr><th class="num">#</th><th>时间</th><th>事件</th><th>经办</th><th>关联编号</th><th>本条哈希</th><th>上一条</th></tr></thead><tbody>
       ${[...L].reverse().slice(0, 40).map((e) => `<tr><td class="num">${e.i}</td><td class="num">${fmtDateTime(e.t).slice(5)}</td><td>${esc(label(e))}</td><td>${esc(e.actor)}</td><td class="mono small">${esc(e.ref)}</td><td class="hash" title="${e.hash}">${e.hash.slice(0, 20)}…</td><td class="hash">${e.prev === 'GENESIS' ? '起始' : `${e.prev.slice(0, 8)}…`}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="empty">还没有记录。提交入场申请后，每一步审核、每一次签约与结算都会写到这里。</p>'}
-    <p class="pad mute small">哈希是真算的（SHA-256）。但这条链只存在你这台设备的浏览器里，没有交易所或第三方见证，不具备法律存证效力；真实环境里应由交易所的存证设施承担。</p>`;
+    <p class="pad mute small">哈希是真算的（SHA-256）。但这条链只存在你这台设备的浏览器里，没有第三方见证，不具备法律存证效力；真实环境里应由获准使用的证据设施承担。</p>`;
   }
 
   function render() {
@@ -191,7 +198,7 @@ export function mount(el) {
     const role = v('role');
     const changed = role !== draft.role;
     Object.assign(draft, {
-      role, channel: v('channel'), org: v('org'), uscc: v('uscc'), contact: v('contact'), sceneTitle: v('sceneTitle'), sceneDesc: v('sceneDesc'),
+      role, region: v('region') || 'CN', channel: v('channel'), org: v('org'), uscc: v('uscc'), contact: v('contact'), sceneTitle: v('sceneTitle'), sceneDesc: v('sceneDesc'),
       category: v('category'), center: v('center'), pledge: c('pledge'), pii: c('pii'), piiAssessed: c('piiAssessed'), cross: c('cross'), crossReady: c('crossReady'),
       materials: changed ? [] : access.ROLES[role].materials.map((_, i) => c(`m${i}`)),
     });
@@ -201,7 +208,7 @@ export function mount(el) {
   el.addEventListener('change', (e) => {
     if (!e.target.closest('#apply')) return;
     collect();
-    if (['role', 'pii', 'cross'].includes(e.target.name)) render();
+    if (['role', 'region', 'pii', 'cross'].includes(e.target.name)) render();
   });
 
   el.addEventListener('submit', (e) => {
@@ -241,10 +248,12 @@ export function mount(el) {
       const r = access.withdraw(now);
       toast(r.ok ? '申请已撤回，可修改后重新提交' : r.error, r.ok ? 'ok' : 'error');
     } else if (act === 'revoke') {
-      if (!window.confirm('撤销后需要重新申请并走完审批才能交易和上架，已登记的产品也会一并注销。确定撤销吗？')) return;
-      const r = access.revoke(now);
-      if (r.ok) draft = null;
-      toast(r.ok ? '入场资格已撤销' : r.error, r.ok ? 'ok' : 'error');
+      confirmDialog('撤销入场资格', '撤销后需要重新申请并走完审批才能交易、挂牌和上架，已登记的产品也会一并注销。', { okText: '撤销', danger: true }).then((yes) => {
+        if (!yes) return;
+        const r = access.revoke(nowSec());
+        if (r.ok) draft = null;
+        toast(r.ok ? '入场资格已撤销' : r.error, r.ok ? 'ok' : 'error');
+      });
     } else if (act === 'list') {
       const c = S.centerByName.get(access.st.member?.center);
       const r = c ? access.registerListings(c, now) : { ok: false, error: '算力中心不存在' };

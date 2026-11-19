@@ -1,4 +1,4 @@
-// 湾区特色：五大能力对照、词元出海看板（真实）、国产模型指数（合成）、政策时间线（公开事实）
+// 词元出海：三种产品形态（G07）、出海看板（真实）、国产模型指数（合成）、广东公开背景（公开事实）
 import * as market from '../core/market.js';
 import { $, esc, fmtPx, fmtPct, fmtDay, dir, nowSec, REAL, SYN, COLOR, tag } from '../ui.js';
 import { makeChart, addLine } from '../chart.js';
@@ -37,18 +37,17 @@ export function mount(el) {
   const peak = Math.max(1, ...G.regions.map((r) => r[1]));
 
   el.innerHTML = `
-  <div class="page-head"><h2>湾区特色</h2>
-    <p>"湾数·元启"公开宣布的五大能力，这套仿真对上了哪几项、差在哪。其中"词元出海"能用真实公开数据直接看：国产模型正被哪些境外服务商部署、卖多少钱。</p></div>
+  <div class="page-head"><h2>词元出海</h2>
+    <p>词元出海，交易的是跨境模型服务，不是搬运一枚币。美元报价只是合同计价，技术 Token 不挂钩任何币值。这一页用公开目录里的真实数据直接看：国产模型正被哪些境外服务商部署、卖多少钱。</p></div>
 
   <section class="panel" style="margin-bottom:12px">
-    <header><h3>五大核心能力对照</h3><span class="sp"></span>${srcLink('gz')}</header>
-    <div class="table-wrap"><table class="tbl"><thead><tr><th>公开宣布的能力</th><th>本仿真里的对应</th><th>程度</th></tr></thead><tbody>
-      <tr><td><b>可信流通</b></td><td style="white-space:normal"><a href="#/access">入场与审批</a>：场景登记、合规会审、上架预检、存证链。流程是我们的设想，不是交易所的实际规则。</td><td>${PART}</td></tr>
-      <tr><td><b>可信计量</b></td><td style="white-space:normal">固定篮子归一、分项计量、发布门槛、<a href="#/procure">采购合同</a>的履约账单与签约报价勾稽。计量规则已实现，计量数据是仿真的。</td><td>${PART}</td></tr>
-      <tr><td><b>词元出海</b></td><td style="white-space:normal">本页的出海看板和国产模型指数。看板用真实公开报价；没有经平台出海的交易数据。</td><td>${PART}</td></tr>
-      <tr><td><b>综合公共服务</b></td><td style="white-space:normal"><a href="#/models">模型图谱</a>、<a href="#/compute">算力中心</a>、<a href="#/daily">每日波动</a>、<a href="#/method">方法与边界</a>。</td><td>${DONE}</td></tr>
-      <tr><td><b>惠企政策</b></td><td style="white-space:normal">没有做。我们只读到两份政策文件的名称和总体目标（见下方时间线），补贴对象、标准和申报方式没有拿到原文，不编。</td><td>${TODO}</td></tr>
-    </tbody></table></div>
+    <header><h3>三种产品形态</h3><span class="mute small">方案 V4.0 G07</span><span class="sp"></span><a class="btn sm" href="#/juris">看跨境路径要核查什么</a></header>
+    <div class="arch" style="padding:12px 14px">
+      <a href="#/procure"><small>形态一</small><b>境外企业采购模型推理 API</b><p>列明模型版本、tokenizer、分项计量、税币种、地域、限流与可用性。</p></a>
+      <a href="#/listing"><small>形态二</small><b>制作方按任务采购生成能力</b><p>文生图、音频或视频生成，按合格任务与实际交付付费。</p></a>
+      <a href="#/evidence"><small>形态三</small><b>成本、质量与证据治理软件</b><p>境外客户采购的是可核算的成本和可验证的记录。</p></a>
+    </div>
+    <p class="pad mute small" style="padding-top:0">提供方可为境内或境外主体，但来源、商用与转供条款、经营及数据路径须逐一核查。"全球算力"是合作愿景，不包括规避芯片、云访问、制裁或地域限制；不做无限额度、永续兑换或收益保底。</p>
   </section>
 
   <div class="cards">
@@ -78,12 +77,23 @@ export function mount(el) {
     </section>
   </div>
 
+  <section class="panel" style="margin-bottom:12px">
+    <header><h3>背景对照：广东"湾数·元启"公开宣布的五大能力</h3><span class="mute small">那是广东的平台，不是本中心</span><span class="sp"></span>${srcLink('gz')}</header>
+    <div class="table-wrap"><table class="tbl"><thead><tr><th>公开宣布的能力</th><th>本仿真里的对应</th><th>程度</th></tr></thead><tbody>
+      <tr><td><b>可信流通</b></td><td style="white-space:normal"><a href="#/access">入场与审批</a>：场景登记、合规会审、上架预检、存证链。流程是我们的设想，不是交易所的实际规则。</td><td>${PART}</td></tr>
+      <tr><td><b>可信计量</b></td><td style="white-space:normal">固定篮子归一、分项计量、发布门槛、<a href="#/procure">采购合同</a>的履约账单与签约报价勾稽。计量规则已实现，计量数据是仿真的。</td><td>${PART}</td></tr>
+      <tr><td><b>词元出海</b></td><td style="white-space:normal">本页的出海看板和国产模型指数。看板用真实公开报价；没有经平台出海的交易数据。</td><td>${PART}</td></tr>
+      <tr><td><b>综合公共服务</b></td><td style="white-space:normal"><a href="#/models">模型图谱</a>、<a href="#/compute">算力中心</a>、<a href="#/daily">每日波动</a>、<a href="#/method">方法与边界</a>。</td><td>${DONE}</td></tr>
+      <tr><td><b>惠企政策</b></td><td style="white-space:normal">没有做。我们只读到两份政策文件的名称和总体目标（见下方时间线），补贴对象、标准和申报方式没有拿到原文，不编。</td><td>${TODO}</td></tr>
+    </tbody></table></div>
+  </section>
+
   <section class="panel">
     <header><h3>广东数据要素与词元经济：公开时间线</h3><span class="mute small">每一条都读过原文</span></header>
     <div class="table-wrap"><table class="tbl"><tbody>
       ${TIMELINE.map(([when, what, src]) => `<tr><td class="num" style="vertical-align:top"><b>${when}</b></td><td style="white-space:normal">${esc(what)}</td><td class="small" style="vertical-align:top">${srcLink(src)}</td></tr>`).join('')}
     </tbody></table></div>
-    <p class="pad mute small">以上是公开报道的事实，只说明既有布局。本仿真没有接入"湾数·元启"，没有使用广州数据交易所的品牌、接口或数据，不代表其官方意见。</p>
+    <p class="pad mute small">以上是公开报道的事实，只说明广东的既有布局，属于背景资料。本仿真没有接入"湾数·元启"，没有使用广州数据交易所的品牌、接口或数据，不代表其官方意见；澳门词元中心（拟议）也不是其分支。</p>
   </section>`;
 
   const chart = makeChart($('#cn-chart', el));

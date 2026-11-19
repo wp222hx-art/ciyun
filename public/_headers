@@ -1,0 +1,8 @@
+/static/vendor/*
+  Cache-Control: public, max-age=604800
+  X-Content-Type-Options: nosniff
+/static/data/*
+  Cache-Control: public, max-age=300
+  X-Content-Type-Options: nosniff
+/static/*
+  X-Content-Type-Options: nosniff

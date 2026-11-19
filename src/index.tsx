@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 // 与浏览器、快照脚本共用同一份归一实现，避免三处口径不一致
 // @ts-ignore 纯 JS 模块
 import { normalizeModel, normalizeEndpoint } from '../public/static/js/core/normalize.js'
+// @ts-ignore 纯 JS 模块
+import { GROUPS } from '../public/static/js/nav.js'
 
 const OR = 'https://openrouter.ai/api/v1'
 const FX = 'https://open.er-api.com/v6/latest/USD'
@@ -70,43 +72,76 @@ app.get('/api/fx', async (c) => {
   } catch (e) { return fail(c, e) }
 })
 
-app.get('/api/health', (c) => c.json({ ok: true }))
+app.get('/api/health', (c) => c.json({ ok: true, version: VERSION }))
+app.all('/api/*', (c) => c.json({ error: '接口不存在' }, 404))
 
-const NAV = [
-  ['access', '入场'], ['market', '行情'], ['daily', '每日波动'], ['trade', '交易'], ['procure', '采购台'],
-  ['models', '模型图谱'], ['compute', '算力中心'], ['bay', '湾区特色'], ['assets', '资产'], ['method', '方法与边界'],
-]
+const VERSION = '4.0.0'
+const LOGO = `<svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#3d8bff"/><path d="M7.5 21.5l5.5-7.5 4 4 7.5-9.5" stroke="#fff" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24.5" cy="8.5" r="2.2" fill="#fff"/></svg>`
 
-app.get('/', (c) => c.html(`<!DOCTYPE html>
+// 页面只加载同源脚本与样式，接口只连同源：外部目录数据一律经本 Worker 代理
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'"
+
+app.get('/', (c) => {
+  c.header('Content-Security-Policy', CSP)
+  c.header('X-Content-Type-Options', 'nosniff')
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin')
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
+  c.header('Cache-Control', 'no-cache')
+  return c.html(`<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>智价台 · 词元经济行情与智能服务交易仿真</title>
-<meta name="description" content="以公开模型目录与服务商报价为锚的 AI 推理服务行情、K线与采购履约仿真环境">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234c8dff'/%3E%3Cpath d='M8 21l5-7 4 4 7-9' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<link href="/static/css/app.css" rel="stylesheet">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0d12">
+<title>澳门词元中心（拟议）· AI 产业交易仿真</title>
+<meta name="description" content="按《全球AI产业交易与Web3／Web4升级方案 V4.0》搭建的仿真环境：公开模型报价行情、版权与服务挂牌、算力服务权益、版税分账、溯源存证与受控 Agent。名称为拟议，未登记、未获品牌授权或金融许可。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233d8bff'/%3E%3Cpath d='M7.5 21.5l5.5-7.5 4 4 7.5-9.5' stroke='%23fff' stroke-width='2.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link href="/static/css/app.css?v=${VERSION}" rel="stylesheet">
 </head>
 <body>
+<a class="skip" href="#view">跳到主要内容</a>
+<div id="chrome">
 <header id="topbar">
-  <a class="brand" href="#/market">
-    <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#4c8dff"/><path d="M8 21l5-7 4 4 7-9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <span class="brand-name">智价台</span><span class="brand-tag">仿真</span>
+  <a class="brand" href="#/home" aria-label="澳门词元中心（拟议）首页">
+    ${LOGO}
+    <span class="brand-text"><span class="brand-name">澳门词元中心</span><span class="brand-sub">AI 产业交易仿真</span></span>
+    <span class="brand-tag" title="拟议名称：不是已核准登记的名称，不是广州数据交易所澳门分支，未取得交易所或金融业务许可">拟议 · 仿真</span>
   </a>
-  <nav id="main-nav">${NAV.map(([k, v]) => `<a href="#/${k}" data-nav="${k}">${v}</a>`).join('')}</nav>
+  <nav id="main-nav" aria-label="主导航">${GROUPS.map((g: any) => `<a href="#/${g.pages[0][0]}" data-group="${g.id}">${g.name}</a>`).join('')}</nav>
   <div class="top-right">
+    <button id="cmdk-btn" class="search-btn" type="button" title="搜索页面、模型、算力中心、挂牌（Ctrl / ⌘ + K）"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>搜索</span><kbd>Ctrl K</kbd></button>
     <button id="data-status" class="chip" type="button" title="数据来源与新鲜度">数据加载中</button>
     <a id="member-chip" class="chip" href="#/access" title="入场状态">未入场</a>
     <a id="top-balance" class="balance" href="#/assets" title="研究记分：不可充值、不可转让、不可兑换"><span>研究记分</span><b>—</b></a>
     <time id="clock" title="北京时间">--:--:--</time>
   </div>
 </header>
-<p id="sim-notice"><b>仿真环境</b>模型、服务商与今日报价来自公开目录；成交、盘口与历史走势为合成数据，不是真实行情。研究记分不可充值、不可兑换，不构成投资建议。</p>
-<main id="view"><p class="loading">正在加载公开目录快照…</p></main>
-<div id="toasts" aria-live="polite"></div>
+<nav id="sub-nav" aria-label="二级导航"></nav>
+</div>
+<div id="sim-notice"><b>仿真环境</b><span class="full">"澳门词元中心"是拟议名称，未登记、未获品牌授权或金融许可。模型与报价来自公开目录；成交、盘口、挂牌、许可、权益与分账均为合成或示例数据。研究记分不可充值、不可兑换，不构成投资建议。</span><span class="short">拟议名称 · 公开报价为真实数据 · 其余为合成或示例</span><button id="notice-toggle" type="button" aria-expanded="true">收起</button></div>
+<main id="view" tabindex="-1"><div class="boot"><div class="spinner" aria-hidden="true"></div><p>正在加载公开目录快照…</p></div></main>
+<footer id="foot">
+  <span>方案版本 V4.0 · 站点 ${VERSION}</span>
+  <span id="foot-store" title="本机存储状态">本机存储检查中</span>
+  <span id="foot-net">网络正常</span>
+  <span class="sp"></span>
+  <a href="#/method">方法与边界</a>
+  <span>不代表广州数据交易所或任何机构的官方意见</span>
+</footer>
+<div id="toasts" role="status" aria-live="polite"></div>
+<noscript><p style="padding:40px;text-align:center">本页面需要启用 JavaScript。</p></noscript>
 <script src="/static/vendor/lightweight-charts.js"></script>
-<script type="module" src="/static/js/app.js"></script>
+<script type="module" src="/static/js/app.js?v=${VERSION}"></script>
 </body>
-</html>`))
+</html>`)
+})
+
+// 页面路由全部在 # 之后；带扩展名的未知路径按文件处理返回 404，其余回到首页
+app.notFound((c) => (/\.[a-z0-9]+$/i.test(c.req.path) ? c.text('Not Found', 404) : c.redirect('/')))
+app.onError((e, c) => {
+  console.error(e)
+  return c.req.path.startsWith('/api/') ? c.json({ error: '服务暂时不可用' }, 500) : c.text('服务暂时不可用，请稍后刷新。', 500)
+})
 
 export default app

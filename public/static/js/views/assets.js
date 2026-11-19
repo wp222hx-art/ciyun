@@ -1,7 +1,7 @@
 // 资产：研究记分账户、持仓、委托、成交、履约记录、账务勾稽
 import * as market from '../core/market.js';
 import * as account from '../core/account.js';
-import { $, $$, esc, fmtNum, fmtPct, fmtInt, fmtDateTime, dir, toast, nowSec } from '../ui.js';
+import { $, $$, esc, fmtNum, fmtPct, fmtInt, fmtDateTime, dir, toast, nowSec, confirmDialog } from '../ui.js';
 import { ordersTable, positionsTable, fillsTable, bindActions, instLink } from './shared.js';
 
 const prefs = { tab: 'pos' };
@@ -74,8 +74,8 @@ export function mount(el) {
     if (b) { prefs.tab = b.dataset.tab; document.activeElement?.blur?.(); paintBody(nowSec()); }
   });
   bindActions($('#body', el));
-  $('#reset', el).addEventListener('click', () => {
-    if (!window.confirm('重置后，持仓、委托、成交、合同全部清空，研究记分恢复为期初值。此操作不能撤销，确定重置吗？')) return;
+  $('#reset', el).addEventListener('click', async () => {
+    if (!await confirmDialog('重置仿真账户', '持仓、委托、成交、合同全部清空，研究记分恢复为期初值。此操作不能撤销。', { okText: '重置', danger: true })) return;
     account.reset();
     toast('仿真账户已重置', 'ok');
   });

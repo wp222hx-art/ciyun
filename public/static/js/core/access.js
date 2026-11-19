@@ -1,6 +1,6 @@
 // 入场与审批（拟议流程的仿真）+ 存证链
-// 依据：广东公开表述的"无场景不登记、无登记不交易、无合规不上架"与合规会审机制。
-// 具体环节、材料、时限均为我方设想，未取得广州数据交易所的业务规则，不代表其实际流程。
+// 设计参照：广东公开表述的"无场景不登记、无登记不交易、无合规不上架"与合规会审机制。
+// 具体环节、材料、时限均为我方设想：不是广州数据交易所的业务规则，也不是澳门任何主管机关的要求。
 import { sha256 } from './sha256.js';
 
 const KEY = 'zjt.access.v1';
@@ -28,7 +28,11 @@ export const ROLES = {
     materials: ['营业执照', '相应经营资质证明', '模型托管或转供授权证明', '计量口径与回执样例', 'SLA 与数据留存说明'] },
   broker: { name: '数据经纪人 / 服务商', short: '经纪人', desc: '受托撮合、合规辅导与交付协同', unlock: '代客询价与采购台签约、交易仿真',
     materials: ['营业执照', '经纪服务协议范本', '利益冲突披露声明', '从业人员名单'] },
+  creator: { name: '创作者 / 片方与权利代理', short: '权利方', desc: '持有或受托管理影视、音乐、图像等内容的权利，向合格买方许可', unlock: '挂牌大厅提交挂牌、签约许可、交易仿真',
+    materials: ['主体登记文件', '受益所有人声明', '权利来源与授权链说明', 'AI 参与及人类创作记录样例', '第三方素材、肖像与声音授权清单'] },
 };
+/** 主体注册地。只有内地主体校验统一社会信用代码；其他注册地的登记编号格式本演示不校验，只要求填写 */
+export const REGIONS = { CN: '内地', MO: '澳门', HK: '香港', OTHER: '其他' };
 export const CHANNELS = { online: '线上直接申请', base: '服务基地 / 专区受理', broker: '数据经纪人推荐' };
 export const CATEGORIES = [
   { id: 'kb', name: '企业知识问答与售后助手', roles: ['buyer', 'broker'] },
@@ -37,6 +41,9 @@ export const CATEGORIES = [
   { id: 'agent', name: '业务流程自动化', roles: ['buyer', 'broker'] },
   { id: 'serve', name: '向已入场买方提供推理服务', roles: ['supplier'] },
   { id: 'match', name: '受托撮合与合规辅导', roles: ['broker'] },
+  { id: 'distribute', name: '采购内容许可用于发行或制作', roles: ['buyer', 'broker'] },
+  { id: 'license', name: '内容与素材许可挂牌', roles: ['creator'] },
+  { id: 'produce', name: 'AI 制作、译制与出海交付', roles: ['creator'] },
   { id: 'resale', name: '额度转售 / 二次分销', roles: ['buyer', 'supplier', 'broker'], banned: true },
   { id: 'hold', name: '囤积额度等待升值', roles: ['buyer', 'broker'], banned: true },
 ];
@@ -44,13 +51,24 @@ export const STEPS = [
   { id: 'formal', name: '形式审查', actor: '平台运营方', sla: '1 个工作日', what: '主体真实、材料齐备、承诺已签' },
   { id: 'scene', name: '场景登记', actor: '场景登记岗', sla: '2 个工作日', what: '用途明确、类别相符、说明充分' },
   { id: 'compliance', name: '合规会审', actor: '合规委员会', sla: '5 个工作日', what: '实际使用、个人信息与出境合规' },
-  { id: 'register', name: '登记公示', actor: '交易所登记岗', sla: '1 个工作日', what: '发放入场编号与场景登记号' },
+  { id: 'register', name: '登记公示', actor: '中心登记岗', sla: '1 个工作日', what: '发放入场编号与场景登记号' },
 ];
 export const EVENTS = {
   'access.submit': '提交入场申请', 'access.resubmit': '补正后重新提交', 'access.pass': '审核环节通过', 'access.return': '退回补正',
   'access.register': '登记公示 · 发放编号', 'access.withdraw': '撤回申请', 'access.revoke': '撤销入场资格', 'listing.register': '产品上架登记',
   'contract.sign': '采购合同签约', 'contract.deliver': '履约出账 · 计量存证', 'contract.settle': '验收结算',
+  'right.submit': '挂牌 · 提交审核', 'right.pass': '挂牌 · 审核通过', 'right.return': '挂牌 · 退回补正', 'right.publish': '挂牌 · 发布', 'right.suspend': '挂牌 · 暂停新授权',
+  'right.resume': '挂牌 · 恢复', 'right.delist': '挂牌 · 撤牌', 'right.revise': '挂牌 · 改版重审',
+  'order.rfq': '许可 · 买方询价', 'order.quote': '许可 · 供方报价', 'order.lock': '许可 · 锁定合同快照', 'order.sign': '许可 · 签约成交', 'order.pay': '许可 · 外部到账确认',
+  'order.deliver': '许可 · 签发凭证并交付', 'order.accept': '许可 · 验收', 'order.dispute': '许可 · 发起争议', 'order.resolve': '许可 · 争议解决', 'order.cancel': '许可 · 取消',
+  'ent.register': '算力权益 · 批次登记', 'ent.book': '算力权益 · 预订', 'ent.consume': '算力权益 · 交付核销', 'ent.transfer': '算力权益 · 发起转让并冻结',
+  'ent.confirm': '算力权益 · 转让确认', 'ent.transfer.done': '算力权益 · 转让完成', 'ent.transfer.cancel': '算力权益 · 转让撤销',
+  'royalty.allocate': '版税 · 分配测算', 'agent.issue': 'Agent · 签发授权凭证', 'agent.decision': 'Agent · 动作裁决', 'agent.revoke': 'Agent · 撤销凭证',
+  'evidence.anchor': '证据 · 封存批次',
 };
+/** 事件分组：溯源页按组筛选 */
+export const EVENT_GROUPS = { access: '入场', listing: '上架', contract: '采购', right: '挂牌', order: '许可', ent: '算力权益', royalty: '版税', agent: 'Agent', evidence: '证据' };
+export const groupOfEvent = (type) => type.split('.')[0];
 
 // 统一社会信用代码：GB 32100-2015 校验位
 const UC = '0123456789ABCDEFGHJKLMNPQRTUWXY';
@@ -70,7 +88,7 @@ export function checks(f, stepId) {
   if (stepId === 'formal') return [
     c(role, '已选择入场角色'),
     c((f.org || '').trim().length >= 4, '主体名称完整'),
-    c(usccValid(f.uscc), '统一社会信用代码校验位正确'),
+    (f.region || 'CN') === 'CN' ? c(usccValid(f.uscc), '统一社会信用代码校验位正确') : c(String(f.uscc || '').trim().length >= 4, `${REGIONS[f.region] || '境外'}登记编号已填写（格式不校验）`),
     c(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.contact || ''), '联系邮箱格式有效'),
     c(role && role.materials.every((_, i) => f.materials?.[i]), `申请材料齐备（${role ? role.materials.length : 0} 项）`),
     c(f.pledge, '已签署真实性与合规承诺'),
@@ -152,8 +170,8 @@ export function review(action, note, now) {
     const f = a.form;
     a.status = 'approved';
     st.member = { no: issue('RC', now), sceneNo: issue('CJ', now), appId: a.id, role: f.role, org: f.org.trim(), uscc: f.uscc.trim().toUpperCase(),
-      channel: f.channel, sceneTitle: f.sceneTitle.trim(), category: f.category, center: f.role === 'supplier' ? f.center : null, approvedAt: now };
-    record('access.register', '交易所登记岗', st.member.no, { appId: a.id, sceneNo: st.member.sceneNo, role: f.role, org: st.member.org }, now);
+      region: f.region || 'CN', channel: f.channel, sceneTitle: f.sceneTitle.trim(), category: f.category, center: f.role === 'supplier' ? f.center : null, approvedAt: now };
+    record('access.register', '中心登记岗', st.member.no, { appId: a.id, sceneNo: st.member.sceneNo, role: f.role, org: st.member.org }, now);
   }
   commit();
   return { ok: true, approved: a.status === 'approved' };
@@ -211,7 +229,7 @@ export function registerListings(center, now) {
   const pass = precheck(center).filter((r) => r.pass && !isListed(r.inst.id, center.name));
   if (!pass.length) return fail('没有新的、通过预检的产品可登记');
   for (const r of pass) st.listings.push({ no: issue('CP', now), instId: r.inst.id, provider: center.name, t: now });
-  record('listing.register', '交易所登记岗', m.no, { provider: center.name, count: pass.length, digest: digest(pass.map((r) => r.inst.id)) }, now);
+  record('listing.register', '中心登记岗', m.no, { provider: center.name, count: pass.length, digest: digest(pass.map((r) => r.inst.id)) }, now);
   commit();
   return { ok: true, count: pass.length };
 }
