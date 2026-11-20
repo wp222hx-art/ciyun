@@ -7,6 +7,7 @@ import * as cmdk from './cmdk.js';
 import { GROUPS, pageOf, groupOf, HOME } from './nav.js';
 import { $, $$, esc, toast, fmtNum, fmtTime, fmtIso, nowSec, ago } from './ui.js';
 import { $t, tx, EN, LANG, watch, setLang, syncLang, dictError } from './i18n.js';
+import * as keep from './formkeep.js';
 
 const loaders = {
   home: () => import('./views/home.js'),
@@ -35,6 +36,10 @@ let currentName = '';
 let token = 0;
 let tickFails = 0;
 let booted = false;
+// 每个地址首次打开时的输入项取值。切换语言前拿它比对，只带走改动过的输入项
+const baselines = new Map();
+// 交易页的委托价格和数量不带过去：重载后默认品种可能不同，带过去会把价格填到别的品种上
+const NO_KEEP = new Set(['trade']);
 
 function parseHash() {
   const parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -92,6 +97,7 @@ async function route() {
     root.className = `page v-${name}`;
     view.replaceChildren(root);
     current = mod.mount(root, args) || {};
+    if (!baselines.has(location.hash)) { if (baselines.size > 200) baselines.clear(); baselines.set(location.hash, keep.values(root)); }
     if (currentName !== name || args.length) window.scrollTo(0, 0);
     currentName = name;
   } catch (e) {
@@ -160,7 +166,15 @@ function wireShell() {
   cmdk.init();
   $('#lang-switch')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-lang]');
-    if (b && b.dataset.lang !== LANG) setLang(b.dataset.lang);
+    if (!b || b.dataset.lang === LANG) return;
+    // 切换语言会整页重载：先记下本页改动过的输入项，重载后填回去。
+    // 记下了才撤掉页面自己的"有未保存的修改"离开提醒；没记下就让它照常提醒
+    const root = $('#view > .page'), base = baselines.get(location.hash);
+    if (root && base && !NO_KEEP.has(currentName) && keep.save(root, base, location.hash)) {
+      try { current?.destroy?.(); } catch (err) { console.error(err); }
+      current = null;
+    }
+    setLang(b.dataset.lang);
   });
   if (EN && dictError) toast('English text failed to load, so the site is shown in Chinese. Reload to try again.', 'error');
   applyNotice();
@@ -185,6 +199,20 @@ function wireShell() {
   if (store.health.recovered.length) toast($t("本机保存的部分数据已损坏或版本过旧，已重置为初始状态（{0} 项），损坏的原文留有备份。", store.health.recovered.length), 'error');
 }
 
+/** 切换语言重载后，把切换前填到一半的内容填回去（只在启动时做一次） */
+function restoreKept() {
+  const kept = keep.take(location.hash);
+  if (!kept) return;
+  try {
+    const root = $('#view > .page');
+    const r = root ? keep.restore(root, kept.fields, kept.rows) : { done: 0, total: kept.fields.length };
+    if (kept.y) window.scrollTo(0, kept.y);
+    // 全部填回才说"已保留"；有没填回的要照实说，不能让人以为都在
+    if (r.done < r.total) toast($t("切换语言后有 {0} 项填写内容没能恢复，请检查后再提交", r.total - r.done), 'error');
+    else if (r.done) toast($t("切换语言前填写的内容已保留"));
+  } catch (e) { console.error(e); }
+}
+
 async function boot(attempt = 1) {
   const view = $('#view');
   view.innerHTML = `<div class="boot"><div class="spinner" aria-hidden="true"></div><p>${$t("正在加载公开目录快照…")}</p></div>`;
@@ -202,6 +230,7 @@ async function boot(attempt = 1) {
   access.onChange(paintMember);
   paintMember();
   await route();
+  restoreKept();
   loop();
   setInterval(loop, 1000);
   setInterval(paintStatus, 60000);

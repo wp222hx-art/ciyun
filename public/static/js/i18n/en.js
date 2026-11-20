@@ -2494,4 +2494,6 @@ export default {
   "合同#{0}": "Contract #{0}",
   "可用余量不足：可用 {0}（另有 {1} 转让冻结中，不能消费），本次核销 {2}": "Not enough available balance: available {0} (another {1} is frozen for transfer and cannot be consumed), this consumption {2}",
   "{0}——{1}": "{0}: {1}",
+  "切换语言前填写的内容已保留": "What you filled in before switching language has been kept",
+  "切换语言后有 {0} 项填写内容没能恢复，请检查后再提交": "{0} item(s) you filled in could not be restored after switching language. Please check before submitting",
 };
