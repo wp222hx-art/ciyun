@@ -32,6 +32,8 @@ export const OBJECTS = {
 export const STRUCTURES = { oneoff: '一次性非独占许可', exclusive: '排他／买断范围许可', usage: '按期订阅与按量使用', royalty: '基于真实渠道收入的合同版税' };
 export const AI_MODES = { none: '未使用 AI', assist: 'AI 辅助，人类主导创作', gen: 'AI 生成为主' };
 export const BANNED_WORDS = ['官方确权', '绝对保真', '保本', '稳定升值'];
+/** 同一组措辞的英文写法：英文界面下填写的名称与说明也要拦，顺序与上面一一对应 */
+export const BANNED_WORDS_EN = ['official confirmation of rights', 'guaranteed authentic', 'capital guaranteed', 'stable appreciation'];
 export const LICENCE_FEE = 0.08; // G21：许可对价的 8% 为中心服务费〔示例假设〕
 
 export const STATES = {
@@ -97,7 +99,8 @@ export function conflicts(S, c) {
 export function review(S, c, today) {
   const k = (ok, label, note = '') => ({ ok: !!ok, label, note });
   const text = `${c.title} ${c.desc}`;
-  const bad = BANNED_WORDS.filter((w) => text.includes(w));
+  const lower = text.toLowerCase();
+  const bad = BANNED_WORDS.filter((w, i) => text.includes(w) || lower.includes(BANNED_WORDS_EN[i]));
   const obj = OBJECTS[c.object];
   const cf = conflicts(S, c);
   const unsure = c.ai && c.ai !== 'none' && String(c.human || '').trim().length < 6;

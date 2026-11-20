@@ -1,5 +1,6 @@
 // 展示层公共工具：转义、格式化、迷你走势图、提示
 import { tickOf, decimalsOf, TZ } from './core/sim.js';
+import { $t, EN } from './i18n.js';
 
 /** 外部目录字段（模型名、服务商名）一律转义后再插入页面 */
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -12,19 +13,20 @@ export const fmtPx = (p, dec) => (p == null || !Number.isFinite(p) ? '—' : p.t
 export const fmtPct = (x, d = 2) => (x == null || !Number.isFinite(x) ? '—' : `${x > 0 ? '+' : ''}${(x * 100).toFixed(d)}%`);
 export const fmtInt = (n) => (n == null ? '—' : Math.round(n).toLocaleString('zh-CN'));
 export const fmtNum = (n, d = 2) => (n == null || !Number.isFinite(n) ? '—' : n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d }));
+/** 大数缩写：中文用万／亿，英文用 K／M／B */
+function abbr(x) {
+  const a = Math.abs(x);
+  if (EN) return a >= 1e9 ? `${(x / 1e9).toFixed(2)}B` : a >= 1e6 ? `${(x / 1e6).toFixed(2)}M` : a >= 1e4 ? `${(x / 1e3).toFixed(1)}K` : null;
+  return a >= 1e8 ? `${(x / 1e8).toFixed(2)}亿` : a >= 1e4 ? `${(x / 1e4).toFixed(2)}万` : null;
+}
 export function fmtMoney(x) {
   if (x == null || !Number.isFinite(x)) return '—';
-  const a = Math.abs(x);
-  if (a >= 1e8) return `${(x / 1e8).toFixed(2)}亿`;
-  if (a >= 1e4) return `${(x / 1e4).toFixed(2)}万`;
-  return x.toFixed(2);
+  return abbr(x) ?? x.toFixed(2);
 }
 /** 数量：单位为百万Token */
 export function fmtQty(q) {
   if (q == null) return '—';
-  if (q >= 1e8) return `${(q / 1e8).toFixed(2)}亿`;
-  if (q >= 1e4) return `${(q / 1e4).toFixed(2)}万`;
-  return fmtInt(q);
+  return abbr(q) ?? fmtInt(q);
 }
 export const fmtCtx = (n) => (n == null ? '—' : n >= 1e6 ? `${+(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
 export const dir = (x) => (x > 0 ? 'up' : x < 0 ? 'down' : 'flat');
@@ -38,10 +40,10 @@ export const nowSec = () => Date.now() / 1000;
 
 export function ago(iso) {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
-  if (s < 90) return '刚刚';
-  if (s < 5400) return `${Math.round(s / 60)} 分钟前`;
-  if (s < 129600) return `${Math.round(s / 3600)} 小时前`;
-  return `${Math.round(s / 86400)} 天前`;
+  if (s < 90) return $t("刚刚");
+  if (s < 5400) return $t("{0} 分钟前", Math.round(s / 60));
+  if (s < 129600) return $t("{0} 小时前", Math.round(s / 3600));
+  return $t("{0} 天前", Math.round(s / 86400));
 }
 
 export const COLOR = { up: '#f6465d', down: '#0ecb81', flat: '#848e9c', accent: '#3d8bff', gold: '#f0b90b', grid: '#1e2329', text: '#848e9c' };
@@ -77,7 +79,7 @@ export function toast(msg, kind = 'info') {
   const el = document.createElement('div');
   el.className = `toast ${kind}`;
   el.textContent = msg;
-  el.title = '点击关闭';
+  el.title = $t("点击关闭");
   const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 300); };
   el.addEventListener('click', close);
   box.appendChild(el);
@@ -88,7 +90,7 @@ export function toast(msg, kind = 'info') {
  * 对话框：确认或带输入的确认。返回 Promise：确认 → true（或输入的文字），取消 → false（或 null）。
  * body 是调用方拼好的 HTML，外部字段须先 esc。
  */
-export function dialog({ title, body = '', okText = '确定', cancelText = '取消', danger = false, input = null }) {
+export function dialog({ title, body = '', okText = $t("确定"), cancelText = $t("取消"), danger = false, input = null }) {
   return new Promise((resolve) => {
     const d = document.createElement('dialog');
     if (typeof d.showModal !== 'function') { // 极旧浏览器：退回原生确认框
@@ -110,7 +112,7 @@ export function dialog({ title, body = '', okText = '确定', cancelText = '取�
       e.preventDefault();
       if (!input) return finish(true);
       const ta = d.querySelector('.dlg-in'), v = ta.value.trim();
-      if (input.required && !v) { const er = d.querySelector('.err'); er.textContent = input.requiredText || '这一项必须填写'; er.hidden = false; ta.focus(); return; }
+      if (input.required && !v) { const er = d.querySelector('.err'); er.textContent = input.requiredText || $t("这一项必须填写"); er.hidden = false; ta.focus(); return; }
       finish(v);
     });
     document.body.appendChild(d);
@@ -122,17 +124,17 @@ export function dialog({ title, body = '', okText = '确定', cancelText = '取�
 }
 export const confirmDialog = (title, body, opts = {}) => dialog({ title, body, ...opts });
 
-export async function copyText(text, what = '内容') {
-  try { await navigator.clipboard.writeText(text); toast(`${what}已复制`, 'ok'); } catch { toast('浏览器不允许写入剪贴板，请手动选择复制', 'error'); }
+export async function copyText(text, what = $t("内容")) {
+  try { await navigator.clipboard.writeText(text); toast($t("{0}已复制", what), 'ok'); } catch { toast($t("浏览器不允许写入剪贴板，请手动选择复制"), 'error'); }
 }
 
 /** 证据标签：真实 / 合成 / 待接入 */
 export const tag = (kind, text) => `<span class="ev ev-${kind}">${esc(text)}</span>`;
-export const REAL = tag('real', '公开目录');
-export const SYN = tag('syn', '合成');
+export const REAL = tag('real', $t("公开目录"));
+export const SYN = tag('syn', $t("合成"));
 
 export function chips(inst) {
-  return `<span class="chip sm">${esc(inst.qLabel)}</span>${inst.open ? '<span class="chip sm open">开放权重</span>' : ''}${inst.variant !== 'std' ? `<span class="chip sm">${esc(inst.variant === 'batch' ? '批处理' : inst.variant)}</span>` : ''}`;
+  return `<span class="chip sm">${esc(inst.qLabel)}</span>${inst.open ? `<span class="chip sm open">${$t("开放权重")}</span>` : ''}${inst.variant !== 'std' ? `<span class="chip sm">${esc(inst.variant === 'batch' ? $t("批处理") : inst.variant)}</span>` : ''}`;
 }
 
 export function debounce(fn, ms = 160) {
@@ -143,9 +145,9 @@ export function debounce(fn, ms = 160) {
 /** 美元金额（方案 V4.0 的示例与模型一律用美元口径） */
 export const fmtUsd = (x, d = 2) => (x == null || !Number.isFinite(x) ? '—' : `${x < 0 ? '−' : ''}$${Math.abs(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })}`);
 export const fmtSigned = (x, d = 2) => (x == null || !Number.isFinite(x) ? '—' : `${x < 0 ? '−' : ''}${Math.abs(x).toFixed(d)}`);
-export const EXAMPLE = tag('syn', '示例数据');
-export const PROPOSED = tag('syn', '拟议规则');
-export const CLOSED = tag('todo', '关闭');
+export const EXAMPLE = tag('syn', $t("示例数据"));
+export const PROPOSED = tag('syn', $t("拟议规则"));
+export const CLOSED = tag('todo', $t("关闭"));
 
 /** 流程步骤条：done 之前的为已完成，cur 为当前 */
 export function stepper(names, cur, { bad = -1 } = {}) {

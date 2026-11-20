@@ -6,6 +6,7 @@ import * as store from './core/store.js';
 import * as cmdk from './cmdk.js';
 import { GROUPS, pageOf, groupOf, HOME } from './nav.js';
 import { $, $$, esc, toast, fmtNum, fmtTime, fmtIso, nowSec, ago } from './ui.js';
+import { $t, tx, EN, LANG, watch, setLang, syncLang, dictError } from './i18n.js';
 
 const loaders = {
   home: () => import('./views/home.js'),
@@ -74,14 +75,14 @@ async function route() {
   paintNav(name);
   if (!name) {
     currentName = '';
-    document.title = '页面不存在 · 澳门词元中心（拟议）';
-    view.innerHTML = panel('没有这个页面', `地址里的"${esc(raw)}"不对应任何页面。`, '<a class="btn primary" href="#/home">回到总览</a><button class="btn" type="button" data-cmdk>搜索页面</button>');
+    document.title = `${$t("页面不存在")} · ${$t("澳门词元中心（拟议）")}`;
+    view.innerHTML = panel($t("没有这个页面"), $t("地址里的\"{0}\"不对应任何页面。", esc(raw)), `<a class="btn primary" href="#/home">${$t("回到总览")}</a><button class="btn" type="button" data-cmdk>${$t("搜索页面")}</button>`);
     return;
   }
   const page = pageOf(name);
-  document.title = `${page.name} · 澳门词元中心（拟议）`;
+  document.title = `${tx(page.name)} · ${$t("澳门词元中心（拟议）")}`;
   if (ui.state.lastInGroup[page.group] !== name) { ui.state.lastInGroup[page.group] = name; ui.commit(); }
-  const slow = setTimeout(() => { if (my === token && !current) view.innerHTML = '<div class="boot"><div class="spinner" aria-hidden="true"></div><p>正在打开页面…</p></div>'; }, 250);
+  const slow = setTimeout(() => { if (my === token && !current) view.innerHTML = `<div class="boot"><div class="spinner" aria-hidden="true"></div><p>${$t("正在打开页面…")}</p></div>`; }, 250);
   try {
     const mod = await loaders[name]();
     if (my !== token) return;
@@ -97,8 +98,8 @@ async function route() {
     console.error(e);
     if (my !== token) return;
     const offline = navigator.onLine === false;
-    view.innerHTML = panel('这个页面没能打开', `${offline ? '当前没有网络，页面脚本加载不下来。' : '页面在加载或渲染时出错，其他页面不受影响。'}<br><span class="mono small">${esc(e.message || e)}</span>`,
-      '<button class="btn primary" type="button" data-retry>重试</button><a class="btn" href="#/home">回到总览</a>');
+    view.innerHTML = panel($t("这个页面没能打开"), `${offline ? $t("当前没有网络，页面脚本加载不下来。") : $t("页面在加载或渲染时出错，其他页面不受影响。")}<br><span class="mono small">${esc(e.message || e)}</span>`,
+      `<button class="btn primary" type="button" data-retry>${$t("重试")}</button><a class="btn" href="#/home">${$t("回到总览")}</a>`);
   } finally { clearTimeout(slow); }
 }
 
@@ -106,16 +107,16 @@ function paintStatus() {
   const el = $('#data-status');
   const s = market.state;
   el.className = `chip ${s.catalogLive ? 'live' : 'stale'}`;
-  el.textContent = s.catalogLive ? `目录实时 · 端点快照 ${ago(s.snapshotAt)}` : `公开目录快照 ${ago(s.snapshotAt)}`;
-  el.title = `模型目录：${s.catalogLive ? '实时拉取' : '离线快照'}（${fmtIso(s.catalogAt)}）\n服务商端点快照：${fmtIso(s.snapshotAt)}\n汇率 USD/CNY ${s.fx.rate}（${fmtIso(s.fx.asOf)}）`;
+  el.textContent = s.catalogLive ? $t("目录实时 · 端点快照 {0}", ago(s.snapshotAt)) : $t("公开目录快照 {0}", ago(s.snapshotAt));
+  el.title = $t("模型目录：{0}（{1}）\n服务商端点快照：{2}\n汇率 USD/CNY {3}（{4}）", s.catalogLive ? $t("实时拉取") : $t("离线快照"), fmtIso(s.catalogAt), fmtIso(s.snapshotAt), s.fx.rate, fmtIso(s.fx.asOf));
 }
 
 function paintMember() {
   const el = $('#member-chip');
   const m = access.st.member, a = access.st.app;
   el.className = `chip ${m ? 'live' : 'stale'}`;
-  el.textContent = m ? `已入场 · ${access.ROLES[m.role].short}` : a && a.status === 'reviewing' ? `审核中 · ${access.STEPS[a.step].name}` : a && a.status === 'returned' ? '已退回 · 待补正' : '未入场';
-  el.title = m ? `入场编号 ${m.no}\n场景登记号 ${m.sceneNo}（演示编号，非真实登记凭证）` : '尚未取得入场资格：无登记不交易';
+  el.textContent = m ? $t("已入场 · {0}", access.ROLES[m.role].short) : a && a.status === 'reviewing' ? $t("审核中 · {0}", access.STEPS[a.step].name) : a && a.status === 'returned' ? $t("已退回 · 待补正") : $t("未入场");
+  el.title = m ? $t("入场编号 {0}\n场景登记号 {1}（演示编号，非真实登记凭证）", m.no, m.sceneNo) : $t("尚未取得入场资格：无登记不交易");
 }
 
 function paintBalance(now) {
@@ -125,13 +126,13 @@ function paintBalance(now) {
 function paintHealth() {
   const el = $('#foot-store');
   const ok = store.health.persistent;
-  el.textContent = ok ? '本机存储正常' : '本机存储不可用 · 数据只保留到关闭页面';
+  el.textContent = ok ? $t("本机存储正常") : $t("本机存储不可用 · 数据只保留到关闭页面");
   el.className = ok ? '' : 'warn';
 }
 function paintNet() {
   const el = $('#foot-net');
   const on = navigator.onLine !== false;
-  el.textContent = on ? '网络正常' : '网络已断开 · 行情仿真继续，实时目录暂停';
+  el.textContent = on ? $t("网络正常") : $t("网络已断开 · 行情仿真继续，实时目录暂停");
   el.className = on ? '' : 'warn';
 }
 
@@ -143,19 +144,25 @@ function loop() {
   if (!current?.tick || tickFails >= 3) return;
   try { current.tick(now); tickFails = 0; } catch (e) {
     console.error(e);
-    if (++tickFails === 3) toast('这个页面的实时刷新出错，已暂停刷新。切换页面或刷新浏览器可以恢复。', 'error');
+    if (++tickFails === 3) toast($t("这个页面的实时刷新出错，已暂停刷新。切换页面或刷新浏览器可以恢复。"), 'error');
   }
 }
 
 function applyNotice() {
   const n = $('#sim-notice'), b = $('#notice-toggle');
   n.classList.toggle('collapsed', ui.state.noticeCollapsed);
-  b.textContent = ui.state.noticeCollapsed ? '展开' : '收起';
+  b.textContent = ui.state.noticeCollapsed ? $t("展开") : $t("收起");
   b.setAttribute('aria-expanded', String(!ui.state.noticeCollapsed));
 }
 
 function wireShell() {
+  watch(); // 英文界面：core 与已保存数据里的中文在进入页面时翻译
   cmdk.init();
+  $('#lang-switch')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lang]');
+    if (b && b.dataset.lang !== LANG) setLang(b.dataset.lang);
+  });
+  if (EN && dictError) toast('English text failed to load, so the site is shown in Chinese. Reload to try again.', 'error');
   applyNotice();
   $('#notice-toggle').addEventListener('click', () => { ui.state.noticeCollapsed = !ui.state.noticeCollapsed; ui.commit(); applyNotice(); });
   $('#data-status').addEventListener('click', () => { location.hash = '#/method'; });
@@ -164,29 +171,29 @@ function wireShell() {
     else if (e.target.closest('[data-cmdk]')) cmdk.open();
   });
   window.addEventListener('hashchange', () => { if (booted) route(); });
-  window.addEventListener('online', () => { paintNet(); toast('网络已恢复', 'ok'); });
-  window.addEventListener('offline', () => { paintNet(); toast('网络已断开：已加载的行情仿真不受影响，实时目录与实时报价暂停', 'error'); });
+  window.addEventListener('online', () => { paintNet(); toast($t("网络已恢复"), 'ok'); });
+  window.addEventListener('offline', () => { paintNet(); toast($t("网络已断开：已加载的行情仿真不受影响，实时目录与实时报价暂停"), 'error'); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && booted) loop(); });
   // 多个标签页同时打开时，别的标签页改了账户或入场状态，这里提示刷新而不是静默覆盖
-  window.addEventListener('storage', (e) => { if (e.key && e.key.startsWith('zjt.') && !e.key.startsWith('zjt.ui') && !e.key.startsWith('zjt.obs')) $('#foot-store').textContent = '另一个标签页修改了本机数据 · 刷新后同步'; });
+  window.addEventListener('storage', (e) => { if (e.key && e.key.startsWith('zjt.') && !e.key.startsWith('zjt.ui') && !e.key.startsWith('zjt.obs')) $('#foot-store').textContent = $t("另一个标签页修改了本机数据 · 刷新后同步"); });
   let lastErr = 0;
-  const report = (msg) => { console.error(msg); if (Date.now() - lastErr > 8000) { lastErr = Date.now(); toast('页面遇到一个未处理的错误，已记录到控制台。若功能异常请刷新。', 'error'); } };
+  const report = (msg) => { console.error(msg); if (Date.now() - lastErr > 8000) { lastErr = Date.now(); toast($t("页面遇到一个未处理的错误，已记录到控制台。若功能异常请刷新。"), 'error'); } };
   window.addEventListener('error', (e) => { if (e.message && !/ResizeObserver/.test(e.message)) report(e.message); });
   window.addEventListener('unhandledrejection', (e) => report(e.reason));
   store.onHealth(paintHealth);
   paintHealth(); paintNet();
-  if (store.health.recovered.length) toast(`本机保存的部分数据已损坏或版本过旧，已重置为初始状态（${store.health.recovered.length} 项），损坏的原文留有备份。`, 'error');
+  if (store.health.recovered.length) toast($t("本机保存的部分数据已损坏或版本过旧，已重置为初始状态（{0} 项），损坏的原文留有备份。", store.health.recovered.length), 'error');
 }
 
 async function boot(attempt = 1) {
   const view = $('#view');
-  view.innerHTML = '<div class="boot"><div class="spinner" aria-hidden="true"></div><p>正在加载公开目录快照…</p></div>';
+  view.innerHTML = `<div class="boot"><div class="spinner" aria-hidden="true"></div><p>${$t("正在加载公开目录快照…")}</p></div>`;
   try {
     await market.load();
   } catch (e) {
     console.error(e);
     if (attempt < 3) { await new Promise((r) => setTimeout(r, 800 * attempt)); return boot(attempt + 1); }
-    view.innerHTML = panel('数据没有加载出来', `公开目录快照读取失败（已自动重试 ${attempt - 1} 次）。${navigator.onLine === false ? '当前没有网络。' : ''}<br><span class="mono small">${esc(e.message || e)}</span>`, '<button class="btn primary" type="button" data-retry>重新加载</button>');
+    view.innerHTML = panel($t("数据没有加载出来"), `${$t("公开目录快照读取失败（已自动重试 {0} 次）。{1}", attempt - 1, navigator.onLine === false ? $t("当前没有网络。") : '')}<br><span class="mono small">${esc(e.message || e)}</span>`, `<button class="btn primary" type="button" data-retry>${$t("重新加载")}</button>`);
     return;
   }
   booted = true;
@@ -202,9 +209,9 @@ async function boot(attempt = 1) {
   // 后台实时刷新模型目录；失败则继续使用快照，并如实显示
   const r = await market.refreshCatalog();
   paintStatus();
-  if (r.ok && (r.added || r.repriced)) toast(`公开目录已更新：新增 ${r.added} 个模型，${r.repriced} 个报价变动`, 'ok');
+  if (r.ok && (r.added || r.repriced)) toast($t("公开目录已更新：新增 {0} 个模型，{1} 个报价变动", r.added, r.repriced), 'ok');
   if (r.ok && parseHash().name === 'models') route();
 }
 
-wireShell();
-boot();
+// 本机记着另一种语言而地址和 cookie 都没带上时，先跳到对应语言再启动
+if (!syncLang()) { wireShell(); boot(); }

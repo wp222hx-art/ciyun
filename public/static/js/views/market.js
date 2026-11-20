@@ -3,10 +3,11 @@ import * as sim from '../core/sim.js';
 import * as market from '../core/market.js';
 import { $, $$, esc, fmtPx, fmtPct, fmtQty, fmtMoney, fmtNum, fmtInt, fmtDay, dir, spark, chips, SYN, REAL, debounce, COLOR } from '../ui.js';
 import { makeChart, addLine } from '../chart.js';
+import { $t } from '../i18n.js';
 
 const prefs = { tab: 'tradable', q: '', sort: 'amt', desc: true, limit: 50 };
-const TABS = [['tradable', '达发布门槛'], ['open', '开放权重'], ['closed', '闭源'], ['quote', '仅报价'], ['all', '全部']];
-const COLS = [['name', '模型 / 可比桶'], ['last', '最新参考价'], ['chg', '今日涨跌'], ['vol', '今日交付量'], ['amt', '今日成交额'], ['sup', '独立供应商'], ['disp', '公开报价区间']];
+const TABS = [['tradable', $t("达发布门槛")], ['open', $t("开放权重")], ['closed', $t("闭源")], ['quote', $t("仅报价")], ['all', $t("全部")]];
+const COLS = [['name', $t("模型 / 可比桶")], ['last', $t("最新参考价")], ['chg', $t("今日涨跌")], ['vol', $t("今日交付量")], ['amt', $t("今日成交额")], ['sup', $t("独立供应商")], ['disp', $t("公开报价区间")]];
 const IDX_FMT = { type: 'price', precision: 2, minMove: 0.01 };
 
 export function mount(el) {
@@ -19,46 +20,46 @@ export function mount(el) {
 
   el.innerHTML = `
   <div class="stats-bar">
-    <span>已收录模型<b>${S.models.length}</b>（精确版本 ${kinds.model} · 别名 ${kinds.alias} · 路由 ${kinds.router}）</span>
-    <span>可比桶<b>${S.insts.length}</b></span>
-    <span>达发布门槛<b>${tradable.length}</b></span>
-    <span>算力中心<b>${S.centers.length}</b></span>
-    <span>公开报价<b>${fmtInt(S.insts.reduce((s, i) => s + i.quotes.length, 0))}</b>条</span>
+    <span>${$t("已收录模型")}<b>${S.models.length}</b>${$t("（精确版本 {0} · 别名 {1} · 路由 {2}）", kinds.model, kinds.alias, kinds.router)}</span>
+    <span>${$t("可比桶")}<b>${S.insts.length}</b></span>
+    <span>${$t("达发布门槛")}<b>${tradable.length}</b></span>
+    <span>${$t("算力中心")}<b>${S.centers.length}</b></span>
+    <span>${$t("公开报价")}<b>${fmtInt(S.insts.reduce((s, i) => s + i.quotes.length, 0))}</b>${$t("条")}</span>
     <span>USD/CNY<b>${S.fx.rate.toFixed(4)}</b></span>
-    <span>${REAL} 以上均来自公开目录</span>
+    <span>${REAL} ${$t("以上均来自公开目录")}</span>
   </div>
   <div class="cards" id="idx-cards"></div>
   <div class="grid-2">
     <section class="panel">
-      <header><h3>推理参考价格指数</h3>${SYN}<span class="sp"></span><span class="mute small">基期 ${fmtDay(ix.base)} = 100 · 等品牌组权重 · 成分 ${ix.all.members} 个桶</span></header>
+      <header><h3>${$t("推理参考价格指数")}</h3>${SYN}<span class="sp"></span><span class="mute small">${$t("基期 {0} = 100 · 等品牌组权重 · 成分 {1} 个桶", fmtDay(ix.base), ix.all.members)}</span></header>
       <div class="chart" id="idx-chart"></div>
     </section>
     <section class="panel">
-      <header><h3>今日涨跌榜</h3>${SYN}</header>
+      <header><h3>${$t("今日涨跌榜")}</h3>${SYN}</header>
       <div class="movers" id="movers"></div>
     </section>
   </div>
   <section class="panel" style="margin-bottom:12px">
-    <header><h3>品牌热力</h3>${SYN}<span class="sp"></span><span class="mute small">品牌内达标桶今日平均涨跌 · 红涨绿跌</span></header>
+    <header><h3>${$t("品牌热力")}</h3>${SYN}<span class="sp"></span><span class="mute small">${$t("品牌内达标桶今日平均涨跌 · 红涨绿跌")}</span></header>
     <div class="heat" id="heat"></div>
   </section>
   <section class="panel">
     <header>
       <div class="tabs" id="tabs">${TABS.map(([k, v]) => `<button data-tab="${k}">${v}</button>`).join('')}</div>
       <span class="sp"></span>
-      <input class="input search" id="q" type="search" placeholder="搜索模型、品牌…" value="${esc(prefs.q)}" aria-label="搜索">
+      <input class="input search" id="q" type="search" placeholder="${$t("搜索模型、品牌…")}" value="${esc(prefs.q)}" aria-label="${$t("搜索")}">
     </header>
     <div class="table-wrap"><table class="tbl" id="tbl">
-      <thead><tr>${COLS.map(([k, v], i) => `<th class="sortable ${i ? 'num' : ''}" data-sort="${k}">${v}</th>`).join('')}<th>近30个发布日</th><th>状态</th></tr></thead>
+      <thead><tr>${COLS.map(([k, v], i) => `<th class="sortable ${i ? 'num' : ''}" data-sort="${k}">${v}</th>`).join('')}<th>${$t("近30个发布日")}</th><th>${$t("状态")}</th></tr></thead>
       <tbody></tbody>
     </table></div>
-    <button class="more" id="more" hidden>加载更多</button>
-    <p class="pad mute small">价格单位：元 / 百万Token（固定篮子：80% 输入 + 20% 输出）。"公开报价区间"与"独立供应商"为真实值；最新价、涨跌、交付量、成交额为仿真成交。供应商不足 3 家的桶不发布成交统计，只显示公开报价。</p>
+    <button class="more" id="more" hidden>${$t("加载更多")}</button>
+    <p class="pad mute small">${$t("价格单位：元 / 百万Token（固定篮子：80% 输入 + 20% 输出）。\"公开报价区间\"与\"独立供应商\"为真实值；最新价、涨跌、交付量、成交额为仿真成交。供应商不足 3 家的桶不发布成交统计，只显示公开报价。")}</p>
   </section>`;
 
   // ---------- 指数 ----------
   const chart = makeChart($('#idx-chart', el));
-  const lines = [['all', '综合', COLOR.accent], ['open', '开放权重', COLOR.down], ['closed', '闭源', COLOR.gold], ['cn', '国产', '#c26bff']].map(([k, title, color]) => {
+  const lines = [['all', $t("综合"), COLOR.accent], ['open', $t("开放权重"), COLOR.down], ['closed', $t("闭源"), COLOR.gold], ['cn', $t("国产"), '#c26bff']].map(([k, title, color]) => {
     const s = addLine(chart, color, IDX_FMT, { title, lineWidth: 2, lastValueVisible: true });
     s.setData(ix[k].series.map((p) => ({ time: fmtDay(p.d), value: p.v })));
     return { k, s };
@@ -71,22 +72,22 @@ export function mount(el) {
       const cur = ix[k].now(now);
       const prev = ix[k].series.at(-1)?.v;
       const chg = cur != null && prev ? cur / prev - 1 : null;
-      return `<div class="card"><h4>${title}</h4><p class="big ${dir(chg)}">${cur == null ? '—' : cur.toFixed(2)}</p><p class="sub"><span class="num ${dir(chg)}">${fmtPct(chg)}</span> 较上一发布日 · ${sub}</p></div>`;
+      return `<div class="card"><h4>${title}</h4><p class="big ${dir(chg)}">${cur == null ? '—' : cur.toFixed(2)}</p><p class="sub"><span class="num ${dir(chg)}">${fmtPct(chg)}</span> ${$t("较上一发布日 · {0}", sub)}</p></div>`;
     };
     const pros = market.prosperity(now);
     $('#idx-cards', el).innerHTML =
-      card('推理参考价格指数', 'all', `${ix.all.members} 个桶`) +
-      card('开放权重指数', 'open', `${ix.open.members} 个桶`) +
-      card('闭源模型指数', 'closed', `${ix.closed.members} 个桶`) +
-      card('国产模型指数', 'cn', `${ix.cn.members} 个桶`) +
-      `<div class="card"><h4>供需景气指标</h4><p class="big">${pros == null ? '—' : pros.toFixed(1)}</p><p class="sub">今日样本数 ÷ 按日内节律的预期 × 100</p></div>`;
+      card($t("推理参考价格指数"), 'all', $t("{0} 个桶", ix.all.members)) +
+      card($t("开放权重指数"), 'open', $t("{0} 个桶", ix.open.members)) +
+      card($t("闭源模型指数"), 'closed', $t("{0} 个桶", ix.closed.members)) +
+      card($t("国产模型指数"), 'cn', $t("{0} 个桶", ix.cn.members)) +
+      `<div class="card"><h4>${$t("供需景气指标")}</h4><p class="big">${pros == null ? '—' : pros.toFixed(1)}</p><p class="sub">${$t("今日样本数 ÷ 按日内节律的预期 × 100")}</p></div>`;
     for (const { k, s } of lines) { const v = ix[k].now(now); if (v != null) s.update({ time: today, value: v }); }
   }
 
   function paintMovers(now) {
     const xs = tradable.map((i) => ({ i, s: sim.summary(i, now) })).filter((x) => x.s.n > 0).sort((a, b) => b.s.chg - a.s.chg);
     const row = (x) => `<a href="#/trade/${encodeURIComponent(x.i.id)}"><span>${esc(x.i.name)}</span><span class="num ${dir(x.s.chg)}">${fmtPct(x.s.chg)}</span></a>`;
-    $('#movers', el).innerHTML = `<div><h4>涨幅前列</h4>${xs.slice(0, 7).map(row).join('')}</div><div><h4>跌幅前列</h4>${xs.slice(-7).reverse().map(row).join('')}</div>`;
+    $('#movers', el).innerHTML = `<div><h4>${$t("涨幅前列")}</h4>${xs.slice(0, 7).map(row).join('')}</div><div><h4>${$t("跌幅前列")}</h4>${xs.slice(-7).reverse().map(row).join('')}</div>`;
 
     const brands = new Map();
     for (const x of xs) { const b = brands.get(x.i.brand) || { n: 0, sum: 0 }; b.n++; b.sum += x.s.chg; brands.set(x.i.brand, b); }
@@ -134,16 +135,16 @@ export function mount(el) {
     });
     const shown = xs.slice(0, prefs.limit);
     tbody.innerHTML = shown.length ? shown.map((i) => `<tr class="click" data-id="${esc(i.id)}">
-      <td class="c-name"><b>${esc(i.name)}</b>${chips(i)}<small>${esc(i.brand)} · 锚定 ${esc(i.anchorProvider)}</small></td>
+      <td class="c-name"><b>${esc(i.name)}</b>${chips(i)}<small>${$t("{0} · 锚定 {1}", esc(i.brand), esc(i.anchorProvider))}</small></td>
       <td class="num" data-k="last"></td><td class="num" data-k="chg"></td><td class="num" data-k="vol"></td><td class="num" data-k="amt"></td>
       <td class="num">${i.suppliers}</td>
       <td class="num">${fmtPx(i.minCny)} – ${fmtPx(i.maxCny)}</td>
-      <td>${i.meets ? '<canvas class="spark"></canvas>' : '<span class="mute small">不发布</span>'}</td>
-      <td>${i.meets ? '<span class="up small">可仿真撮合</span>' : '<span class="mute small">仅报价</span>'}</td></tr>`).join('')
-      : '<tr><td colspan="9" class="empty">没有符合条件的品种</td></tr>';
+      <td>${i.meets ? '<canvas class="spark"></canvas>' : `<span class="mute small">${$t("不发布")}</span>`}</td>
+      <td>${i.meets ? `<span class="up small">${$t("可仿真撮合")}</span>` : `<span class="mute small">${$t("仅报价")}</span>`}</td></tr>`).join('')
+      : `<tr><td colspan="9" class="empty">${$t("没有符合条件的品种")}</td></tr>`;
     const more = $('#more', el);
     more.hidden = xs.length <= prefs.limit;
-    more.textContent = `加载更多（已显示 ${shown.length} / ${xs.length}）`;
+    more.textContent = $t("加载更多（已显示 {0} / {1}）", shown.length, xs.length);
     last.clear();
     for (const tr of $$('tr[data-id]', tbody)) {
       const inst = S.instById.get(tr.dataset.id);
@@ -159,7 +160,7 @@ export function mount(el) {
       const cell = (k) => tr.querySelector(`[data-k="${k}"]`);
       if (!inst.meets) {
         if (!last.has(inst.id)) {
-          cell('last').innerHTML = `${fmtPx(inst.anchor)} <span class="mute small">报价</span>`;
+          cell('last').innerHTML = `${fmtPx(inst.anchor)} <span class="mute small">${$t("报价")}</span>`;
           for (const k of ['chg', 'vol', 'amt']) cell(k).textContent = '—';
           last.set(inst.id, inst.anchor);
         }

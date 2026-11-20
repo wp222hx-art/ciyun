@@ -3,29 +3,31 @@ import * as market from './core/market.js';
 import * as rights from './core/rights.js';
 import { PAGES } from './nav.js';
 import { esc } from './ui.js';
+import { $t, tx } from './i18n.js';
 
 let dlg = null, list = [], cur = 0;
 
 function search(q) {
   q = q.trim().toLowerCase();
   const out = [];
-  const hit = (...xs) => !q || xs.some((x) => String(x || '').toLowerCase().includes(q));
-  for (const p of PAGES) if (hit(p.name, p.desc, p.groupName, p.id)) out.push({ kind: '页面', title: p.name, sub: `${p.groupName} · ${p.desc}`, href: `#/${p.id}` });
+  // 名称在源码和数据里是中文；同时按当前界面语言的译文匹配
+  const hit = (...xs) => !q || xs.some((x) => { const v = String(x || ''); return v.toLowerCase().includes(q) || tx(v).toLowerCase().includes(q); });
+  for (const p of PAGES) if (hit(p.name, p.desc, p.groupName, p.id)) out.push({ kind: $t("页面"), title: p.name, sub: `${p.groupName} · ${p.desc}`, href: `#/${p.id}` });
   if (q) {
     const S = market.state;
     let n = 0;
-    for (const i of S.insts) { if (n >= 8) break; if (hit(i.name, i.id, i.brand)) { out.push({ kind: i.meets ? '行情' : '仅报价', title: i.name, sub: `${i.qLabel} · ${i.suppliers} 家服务商 · ${i.id}`, href: `#/trade/${encodeURIComponent(i.id)}` }); n++; } }
+    for (const i of S.insts) { if (n >= 8) break; if (hit(i.name, i.id, i.brand)) { out.push({ kind: i.meets ? $t("行情") : $t("仅报价"), title: i.name, sub: $t("{0} · {1} 家服务商 · {2}", i.qLabel, i.suppliers, i.id), href: `#/trade/${encodeURIComponent(i.id)}` }); n++; } }
     n = 0;
-    for (const c of S.centers) { if (n >= 5) break; if (hit(c.name)) { out.push({ kind: '算力中心', title: c.name, sub: `${c.n} 个在售服务`, href: `#/compute/${encodeURIComponent(c.name)}` }); n++; } }
+    for (const c of S.centers) { if (n >= 5) break; if (hit(c.name)) { out.push({ kind: $t("算力中心"), title: c.name, sub: $t("{0} 个在售服务", c.n), href: `#/compute/${encodeURIComponent(c.name)}` }); n++; } }
     n = 0;
-    for (const c of rights.db.state.listings) { if (n >= 5) break; if (hit(c.title, c.id, c.holder, c.assetId)) { out.push({ kind: '挂牌', title: c.title, sub: `${c.id} · ${rights.STATES[c.status]}`, href: `#/listing/${c.id}` }); n++; } }
+    for (const c of rights.db.state.listings) { if (n >= 5) break; if (hit(c.title, c.id, c.holder, c.assetId)) { out.push({ kind: $t("挂牌"), title: c.title, sub: `${c.id} · ${rights.STATES[c.status]}`, href: `#/listing/${c.id}` }); n++; } }
   }
   return out.slice(0, 30);
 }
 
 function paint() {
   const ul = dlg.querySelector('ul');
-  ul.innerHTML = list.length ? list.map((x, i) => `<li role="option" data-i="${i}" class="${i === cur ? 'on' : ''}" aria-selected="${i === cur}"><em>${esc(x.kind)}</em><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></li>`).join('') : '<li class="none">没有匹配的结果。可以搜页面名、模型名、算力中心或挂牌编号。</li>';
+  ul.innerHTML = list.length ? list.map((x, i) => `<li role="option" data-i="${i}" class="${i === cur ? 'on' : ''}" aria-selected="${i === cur}"><em>${esc(x.kind)}</em><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></li>`).join('') : `<li class="none">${$t("没有匹配的结果。可以搜页面名、模型名、算力中心或挂牌编号。")}</li>`;
   ul.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
 }
 
@@ -41,7 +43,7 @@ export function open() {
   if (!dlg) {
     dlg = document.createElement('dialog');
     dlg.className = 'cmdk';
-    dlg.innerHTML = `<input type="search" placeholder="搜索页面、模型、算力中心、挂牌编号…" aria-label="全局搜索" autocomplete="off" spellcheck="false"><ul role="listbox"></ul><footer><span><kbd>↑</kbd><kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>Esc</kbd> 关闭</span></footer>`;
+    dlg.innerHTML = `<input type="search" placeholder="${$t("搜索页面、模型、算力中心、挂牌编号…")}" aria-label="${$t("全局搜索")}" autocomplete="off" spellcheck="false"><ul role="listbox"></ul><footer><span><kbd>↑</kbd><kbd>↓</kbd> ${$t("选择")}</span><span><kbd>Enter</kbd> ${$t("打开")}</span><span><kbd>Esc</kbd> ${$t("关闭")}</span></footer>`;
     document.body.appendChild(dlg);
     const input = dlg.querySelector('input');
     input.addEventListener('input', () => { list = search(input.value); cur = 0; paint(); });

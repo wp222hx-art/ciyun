@@ -1,5 +1,6 @@
 // 图表封装（TradingView Lightweight Charts v4，Apache-2.0，本地托管）
 import { COLOR } from './ui.js';
+import { EN } from './i18n.js';
 
 const LC = () => window.LightweightCharts;
 
@@ -11,7 +12,7 @@ export function makeChart(el, { intraday = false, ...extra } = {}) {
     rightPriceScale: { borderColor: '#2a3038' },
     timeScale: { borderColor: '#2a3038', timeVisible: intraday, secondsVisible: false, rightOffset: 3 },
     crosshair: { mode: 0 },
-    localization: { locale: 'zh-CN' },
+    localization: { locale: EN ? 'en-US' : 'zh-CN' },
     ...extra,
   });
 }
