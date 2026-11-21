@@ -2539,4 +2539,7 @@ export default {
   "全部主题": "All topics",
   "上一篇": "Previous",
   "下一篇": "Next",
+  "本页导览": "Page tour",
+  "把这一页的关键位置依次圈出来讲一遍": "Walk through the key places on this page one at a time",
+  "这一页现在没有可以圈出来讲的位置，请点旁边的\"本页帮助\"看说明": "There is nothing on this page to point at right now. Click “Page help” next to it for the guide.",
 };

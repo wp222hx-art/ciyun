@@ -511,9 +511,10 @@ select.input { max-width: 100%; }
 .help-btn { text-decoration: none; padding: 0 10px; }
 .help-btn i, .sub-help i { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid currentColor; border-radius: 50%; font: 700 10px/1 var(--mono); font-style: normal; }
 #sub-nav .sp { flex: 1; min-width: 8px; }
-#sub-nav a.sub-help { position: sticky; right: 0; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); background: #12161c; box-shadow: -12px 0 10px -4px #12161c; }
-#sub-nav a.sub-help:hover { border-color: var(--accent); color: var(--text); background: #12161c; }
-@media (max-width: 820px) { #sub-nav a.sub-help span { display: none; } #sub-nav a.sub-help { padding: 3px 7px; } }
+#sub-nav .sub-tools { position: sticky; right: 0; display: inline-flex; gap: 6px; padding-left: 6px; background: #12161c; box-shadow: -12px 0 10px -4px #12161c; }
+#sub-nav .sub-help { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 7px; background: #12161c; color: var(--mute); font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; transition: border-color .12s, color .12s; }
+#sub-nav .sub-help:hover { border-color: var(--accent); color: var(--text); background: #12161c; }
+@media (max-width: 820px) { #sub-nav .sub-help span { display: none; } #sub-nav .sub-help { padding: 3px 7px; } }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 10px 18px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 14px; border: 1px solid rgba(61,139,255,.35); border-radius: var(--r); background: var(--accent-soft); }
 .welcome p { color: #c5cad3; } .welcome p b { margin-right: 8px; color: var(--text); }
 
@@ -588,6 +589,7 @@ dl.terms dd { margin: 2px 0 0; }
 .tour-pop:focus { outline: none; }
 .tour-pop h3 { margin: 2px 0 6px; font-size: 15px; }
 .tour-pop p { color: #c5cad3; line-height: 1.7; }
+.tour-pop b.ui { padding: 0 5px; border: 1px solid var(--line2); border-radius: 4px; background: var(--panel2); color: var(--text); font-weight: 600; font-size: 12px; }
 .tour-pop .tour-n { color: var(--mute); font: 11px var(--mono); }
 .tour-acts { display: flex; align-items: center; gap: 8px; margin-top: 12px; } .tour-acts .sp { flex: 1; }
 

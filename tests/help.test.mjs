@@ -9,7 +9,7 @@ import EN from '../public/static/js/help/en.js';
 import SHOTS from '../public/static/js/help/shots.js';
 import dict from '../public/static/js/i18n/en.js';
 import shell from '../public/static/js/i18n/en-shell.js';
-import { PAGES } from '../public/static/js/nav.js';
+import { PAGES, tourKey } from '../public/static/js/nav.js';
 import { ROLES } from '../public/static/js/core/access.js';
 import { extract } from '../scripts/i18n-check.mjs';
 
@@ -113,4 +113,51 @@ test('截图：手册引用的每一张都已生成，标注个数与图上的�
       assert.ok(fs.existsSync(`${ROOT}public/static/help/${lang}/${s.name}.webp`), `${lang}/${s.name}.webp 不在磁盘上`);
     }
   }
+});
+
+test('本页导览：每个功能页面都有一套，同一页面的列表、详情、编辑各用各的', () => {
+  for (const p of PAGES) if (p.id !== 'home' && p.id !== 'help') assert.ok(ZH.tours[tourKey(p.id)]?.length >= 3, `页面缺本页导览：${p.id}`);
+  assert.equal(tourKey('compute', ['DeepInfra']), 'compute/detail');
+  assert.equal(tourKey('listing', ['new']), 'listing/edit');
+  assert.equal(tourKey('listing', ['SIM-GP-0001', 'edit']), 'listing/edit');
+  assert.equal(tourKey('listing', ['SIM-GP-0001']), 'listing/detail');
+  assert.equal(tourKey('listing', []), 'listing');
+  assert.equal(tourKey('trade', ['x']), 'trade');
+  for (const k of ['compute/detail', 'listing/detail', 'listing/edit']) assert.ok(ZH.tours[k]?.length >= 3, k);
+  for (const k of Object.keys(ZH.tours)) assert.ok(PAGES.some((p) => p.id === k.split('/')[0]), `导览对应的页面不存在：${k}`);
+});
+
+test('本页导览：中英文逐步对齐，圈的是同一个位置，引用同一批按钮名', () => {
+  assert.deepEqual(Object.keys(EN.tours), Object.keys(ZH.tours));
+  const key = (x) => labelsIn(x).sort().join('|');
+  for (const [k, zh] of Object.entries(ZH.tours)) {
+    const en = EN.tours[k];
+    assert.deepEqual(en.map((s) => s.sel), zh.map((s) => s.sel), `${k} 的定位点不一致`);
+    zh.forEach((s, i) => {
+      assert.ok(s.sel && s.t && s.d && en[i].t && en[i].d, `${k} 第 ${i + 1} 步不完整`);
+      assert.equal(key(en[i].t + en[i].d), key(s.t + s.d), `${k} 第 ${i + 1} 步引用的按钮名不一致`);
+    });
+    assert.equal(new Set(zh.map((s) => s.sel)).size, zh.length, `${k} 有重复的定位点`);
+  }
+});
+
+test('本页导览：定位点在对应页面的源码里确实存在；按钮名是界面文案；英文不含中文', () => {
+  const ui = extract();
+  const uiJs = fs.readFileSync(`${ROOT}public/static/js/ui.js`, 'utf8');
+  const strip = (s) => s.replace(/\{\{[^{}]+\}\}/g, '');
+  for (const [k, steps] of Object.entries(ZH.tours)) {
+    const src = fs.readFileSync(`${ROOT}public/static/js/views/${k.split('/')[0]}.js`, 'utf8') + uiJs;
+    for (const s of steps) {
+      const sel = s.sel.replace(/^sec:/, '');
+      const m = /^#([\w-]+)$/.exec(sel) || /^\.([\w-]+)$/.exec(sel) || /^\[(href="[^"]+")\]$/.exec(sel);
+      assert.ok(m, `${k}：定位点写法不认识 ${s.sel}`);
+      const needle = sel.startsWith('#') ? `id="${m[1]}"` : m[1];
+      assert.ok(src.includes(needle), `${k}：页面里找不到 ${s.sel}`);
+    }
+  }
+  for (const H of [ZH, EN]) for (const [k, steps] of Object.entries(H.tours)) for (const s of steps) for (const x of [s.t, s.d]) {
+    for (const l of labelsIn(x)) { assert.ok(ui.has(l) || l in shell, `${k}：界面上没有"${l}"这个文案`); assert.ok(l in all && !IDEO.test(all[l]), `${k}："${l}"缺英文`); }
+    assert.ok(!/合规通过|compliance passed/i.test(x), `${k}：${x.slice(0, 40)}`);
+  }
+  for (const [k, steps] of Object.entries(EN.tours)) for (const s of steps) for (const x of [s.t, s.d]) assert.ok(!IDEO.test(strip(x)), `${k}：${x.slice(0, 50)}`);
 });

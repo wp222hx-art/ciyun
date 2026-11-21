@@ -1,6 +1,7 @@
 // 帮助中心截图：在真实界面上把主流程走一遍，边走边截图，并按帮助内容里 marks 的顺序打上编号。
 // 用法：先启动站点（默认 http://localhost:3000），再运行
 //   PLAYWRIGHT=/path/to/node_modules/playwright/index.mjs node scripts/help-shots.mjs [zh|en]
+// 只重拍其中几张（其余保持不动）：ONLY=tour,page-tour node scripts/help-shots.mjs
 // 产物：public/static/help/{zh,en}/*.webp 与 public/static/js/help/shots.js（清单）。
 // 本仓库不把 Playwright 列为依赖；没装时这个脚本不能运行，站点本身不受影响。
 import fs from 'node:fs';
@@ -10,6 +11,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT || 'playwright');
 const BASE = process.env.BASE || 'http://localhost:3000';
 const ROOT = fileURLToPath(new URL('../public/static/', import.meta.url));
 const LANGS = process.argv[2] ? [process.argv[2]] : ['zh', 'en'];
+const ONLY = process.env.ONLY ? new Set(process.env.ONLY.split(',').map((x) => x.trim()).filter(Boolean)) : null;
 const W = 1280, TALL = 3200, DSF = 1.5;
 const manifestFile = `${ROOT}js/help/shots.js`;
 const manifest = (await import(`${manifestFile}?t=${Date.now()}`)).default;
@@ -31,7 +33,8 @@ for (const lang of LANGS) {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`  [pageerror] ${e.message}`));
   const outDir = `${ROOT}help/${lang}/`;
-  fs.rmSync(outDir, { recursive: true, force: true }); fs.mkdirSync(outDir, { recursive: true });
+  if (!ONLY) fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
   const out = {};
   const wait = (ms) => page.waitForTimeout(ms);
   const go = async (hash, sel, ms = 1100) => { await page.evaluate((h) => { location.hash = `#/${h}`; }, hash); await page.waitForSelector(sel, { timeout: 20000 }); await wait(ms); };
@@ -40,6 +43,7 @@ for (const lang of LANGS) {
 
   /** clip / marks 里的写法：'#a' 单个元素；'sec:#a' 所在的 section；'lab:#a' 所在的 label；'all:.a' 全部匹配；数组取并集 */
   async function snap(name, { clip, marks = [], pad = marks.length ? 18 : 8, maxH = 0, mode = 'page', vh = 800 } = {}) {
+    if (ONLY && !ONLY.has(name)) return; // 只重拍指定的几张：流程照走，这一张不拍
     try {
       await page.setViewportSize({ width: W, height: mode === 'page' ? TALL : vh });
       if (mode === 'page') await page.evaluate(() => window.scrollTo(0, 0));
@@ -105,6 +109,13 @@ for (const lang of LANGS) {
 
   // ---- 行情
   await go('market', '#tbl tbody tr[data-id]', 2200);
+  // 本页导览：在行情总览上走到第 2 步再拍
+  await page.setViewportSize({ width: W, height: 760 }); await wait(200);
+  await click('#sub-nav [data-page-tour]', 700); await page.waitForSelector('.tour-pop');
+  await click('.tour-pop [data-t="next"]', 500);
+  await snap('page-tour', { mode: 'viewport', vh: 760, maxH: 560 });
+  await page.keyboard.press('Escape'); await wait(300);
+  await page.setViewportSize({ width: W, height: TALL }); await wait(200);
   await snap('market', { clip: ['.stats-bar', '#idx-cards', 'sec:#idx-chart', 'sec:#movers', 'sec:#heat'], marks: ['.stats-bar', '#idx-cards', 'sec:#idx-chart', 'sec:#movers', 'sec:#heat'] });
   await snap('market-table', { clip: 'sec:#tbl', maxH: 430, marks: ['#tabs', '#q', '#tbl tbody tr[data-id]'] });
   await go('daily', '#matrix table', 2500);
@@ -241,8 +252,9 @@ for (const lang of LANGS) {
   await go('home', '#quick a', 800);
   await snap('home-path', { clip: 'sec:#quick' });
 
-  manifest[lang] = out;
-  console.log(`${lang}: ${Object.keys(out).length} 张`);
+  manifest[lang] = ONLY ? { ...manifest[lang], ...out } : out;
+  console.log(`${lang}: ${Object.keys(out).length} 张${ONLY ? `（只重拍 ${[...ONLY].join('、')}）` : ''}`);
+  if (ONLY) for (const n of ONLY) if (!out[n]) { failed++; console.log(`  FAIL ${lang}/${n}: 没有这张截图，或没拍成`); }
   await ctx.close();
 }
 await browser.close();

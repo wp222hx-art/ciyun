@@ -36,7 +36,7 @@ export function mount(el) {
   </section>
   <section class="panel" id="main" style="margin-bottom:12px"></section>
   <section class="panel" id="listing" style="margin-bottom:12px" hidden></section>
-  <section class="panel" style="margin-bottom:12px">
+  <section class="panel" id="roles" style="margin-bottom:12px">
     <header><h3>${$t("四类入场角色")}</h3>${PLAN}</header>
     <div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("角色")}</th><th>${$t("定位")}</th><th>${$t("申请材料")}</th><th>${$t("入场后可以")}</th></tr></thead><tbody>
     ${Object.values(access.ROLES).map((r) => `<tr><td><b>${r.name}</b></td><td>${r.desc}</td><td class="small">${r.materials.join($t("、"))}</td><td>${r.unlock}</td></tr>`).join('')}

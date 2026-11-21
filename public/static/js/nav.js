@@ -32,3 +32,9 @@ export const PAGES = GROUPS.flatMap((g) => g.pages.map(([id, name, desc]) => ({ 
 export const pageOf = (id) => PAGES.find((p) => p.id === id);
 export const groupOf = (id) => GROUPS.find((g) => g.pages.some((p) => p[0] === id));
 export const HOME = 'home';
+/** 本页导览用哪一套内容：同一个页面的列表、详情、编辑三种形态各有一套 */
+export function tourKey(name, args = []) {
+  if (name === 'compute') return args[0] ? 'compute/detail' : 'compute';
+  if (name === 'listing') return args[0] === 'new' || args[1] === 'edit' ? 'listing/edit' : args[0] ? 'listing/detail' : 'listing';
+  return name;
+}

@@ -1,11 +1,11 @@
 // Help content (English): getting started, role guides, the overview page, FAQ, glossary and guided-tour text.
 // Structure mirrors zh-guide.js item for item. {{…}} holds the Chinese source text of an on-screen label;
 // it is rendered in the current interface language, so button names in the manual always match the interface.
-export const tourUi = { name: "Guided tour", of: "Step {0} of {1}", skip: "Skip", close: "Close", prev: "Back", next: "Next", help: "Open the help centre" };
+export const tourUi = { name: "Guided tour", pageName: "Page tour", of: "Step {0} of {1}", skip: "Skip", close: "Close", prev: "Back", next: "Next", help: "Open the help centre", more: "Read the full guide to this page" };
 
 export const tour = [
   { t: "Welcome to the Macau Token Centre (proposed)", d: "This is a simulation built from the plan. Models and quotes are real public data; trades, listings, licences and splits are synthetic or example data. The next minute walks you round the interface. Press Esc at any time to leave." },
-  { sel: "#main-nav", t: "Main navigation: five groups", d: "Overview, Markets, Industry deals, Trust & governance, Research. Open a group and its pages appear on the row below, with “Page help” at the far right." },
+  { sel: "#main-nav", t: "Main navigation: five groups", d: "Overview, Markets, Industry deals, Trust & governance, Research. Open a group and its pages appear on the row below, with “Page tour” and “Page help” at the far right." },
   { sel: "#cmdk-btn", t: "Global search", d: "Open it with Ctrl / ⌘ + K or the / key. Search pages, models, compute centres and listing numbers, then press Enter to jump there." },
   { sel: "#member-chip", t: "Admission status", d: "Until you are admitted you can only look: no orders, signing, listing or quote requests. Click here to apply; once admitted it shows your role." },
   { sel: "#top-balance", t: "Research credits", d: "You start with 100,000, used only to try out matching and procurement. They cannot be topped up, transferred or redeemed, and they are not money." },
@@ -24,6 +24,7 @@ export default [
       { name: "home", cap: "The overview page and the top bar", marks: ["Main navigation: five groups; open one and its pages appear on the second row", "Global search, shortcut Ctrl / ⌘ + K", "Help centre", "Admission status: view-only until admitted", "Research credit balance; click to open {{账户资产}}", "Language switch", "Simulation notice, collapsible", "Welcome bar shown on your first visit; start the guided tour from here", "Key figures; click a card to open that page"] },
       { name: "search", cap: "Global search: type a keyword and press Enter" },
       { name: "tour", cap: "The guided tour highlights the key places on screen one at a time; press Esc to leave" },
+      { name: "page-tour", cap: "Page tour: every functional page has one; open it with {{本页导览}} at the right of the second navigation row" },
     ],
     stepsTitle: "The main flow in six steps",
     steps: [
@@ -35,7 +36,7 @@ export default [
       { t: "Seal an evidence batch and verify it", d: "Open {{溯源存证}}, click {{封存新批次}}, then click {{出具证明}} on any record. See [Provenance evidence](#/help/evidence).",
         shot: { name: "home-path", cap: "The getting-started path on the overview page: finished steps are ticked" } },
     ],
-    tips: ["Not sure how a page works? Click {{本页帮助}} at the far right of the second navigation row.", "To start again from scratch, see “How do I clear everything and start over?” in the [FAQ](#/help/faq).", "For what to do in each role: [Enterprise buyer](#/help/role-buyer), [Inference provider / compute centre](#/help/role-supplier), [Data broker / service provider](#/help/role-broker), [Creator / studio or rights agent](#/help/role-creator)."],
+    tips: ["Not sure how a page works? Click {{本页导览}} at the far right of the second navigation row to have the key places on the page pointed out one at a time, or {{本页帮助}} for the full guide.", "To start again from scratch, see “How do I clear everything and start over?” in the [FAQ](#/help/faq).", "For what to do in each role: [Enterprise buyer](#/help/role-buyer), [Inference provider / compute centre](#/help/role-supplier), [Data broker / service provider](#/help/role-broker), [Creator / studio or rights agent](#/help/role-creator)."],
   },
   {
     id: "role-buyer", title: "Role: Enterprise buyer",

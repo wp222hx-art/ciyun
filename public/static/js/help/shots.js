@@ -1,6 +1,6 @@
 // 由 scripts/help-shots.mjs 生成：截图名 → 显示尺寸与标注个数。不要手改。
 export default {
-  v: 1795232098,
+  v: 1795282090,
   zh: {
     'home': { w: 1280, h: 544, n: 9 },
     'search': { w: 1280, h: 600, n: 0 },
@@ -51,6 +51,7 @@ export default {
     'access-ledger': { w: 1280, h: 520, n: 2 },
     'access-precheck': { w: 1260, h: 480, n: 0 },
     'home-path': { w: 756, h: 332, n: 0 },
+    'page-tour': { w: 1280, h: 560, n: 0 },
   },
   en: {
     'home': { w: 1280, h: 639, n: 9 },
@@ -102,5 +103,6 @@ export default {
     'access-ledger': { w: 1280, h: 520, n: 2 },
     'access-precheck': { w: 1260, h: 480, n: 0 },
     'home-path': { w: 756, h: 393, n: 0 },
+    'page-tour': { w: 1280, h: 560, n: 0 },
   },
 };

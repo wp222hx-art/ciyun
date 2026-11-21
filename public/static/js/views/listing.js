@@ -199,7 +199,7 @@ function mountDetail(el, id) {
           <button class="btn primary" type="submit">${$t("发出询价")}</button></div>
       </form></section>` : ''}
 
-    <section class="panel mb">
+    <section class="panel mb" id="l-orders">
       <header><h3>${$t("本挂牌的订单")}</h3><span class="mute small">${$t("{0} 笔", orders.length)}</span></header>
       ${orders.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("订单号")}</th><th>${$t("买方")}</th><th>${$t("许可范围")}</th><th class="num">${$t("价格")}</th><th>${$t("状态")}</th><th>${$t("办理")}</th></tr></thead><tbody>
       ${orders.map((o) => `<tr><td class="mono">${o.id}</td><td>${esc(o.buyer)}</td><td class="wrap small mute">${scopeText(o.scope)}</td>
@@ -215,7 +215,7 @@ function mountDetail(el, id) {
       <p class="pad mute small" style="padding-top:0">${$t("流程：询价 → 供方报价 → 锁定规格与合同快照 → 电子签约 → 外部合法支付确认 → 签发凭证并交付 → 验收。中心不代收代管买卖双方的款项，只登记对方银行的到账凭证引用；费率 {0}% 为方案 G21 的示例假设。许可凭证编号带 SIM 前缀，不是真实许可证。", (rights.LICENCE_FEE * 100).toFixed(0))}</p>
     </section>
 
-    <section class="panel">
+    <section class="panel" id="l-hist">
       <header><h3>${$t("办理记录")}</h3><span class="mute small">${$t("{0} 条 · 同步写入", c.history.length)}<a href="#/evidence">${$t("溯源存证")}</a></span></header>
       <div class="table-wrap"><table class="tbl dense"><thead><tr><th>${$t("时间")}</th><th>${$t("经办")}</th><th>${$t("动作")}</th><th>${$t("说明")}</th></tr></thead><tbody>
       ${[...c.history].reverse().map((h) => `<tr><td class="num">${fmtDateTime(h.t).slice(5, 16)}</td><td>${esc(h.who)}</td><td>${esc(h.action)}</td><td class="wrap small mute">${esc(h.note)}</td></tr>`).join('')}

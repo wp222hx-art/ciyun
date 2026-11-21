@@ -4,7 +4,7 @@ import * as account from './core/account.js';
 import * as access from './core/access.js';
 import * as store from './core/store.js';
 import * as cmdk from './cmdk.js';
-import { GROUPS, pageOf, groupOf, HOME } from './nav.js';
+import { GROUPS, pageOf, groupOf, HOME, tourKey } from './nav.js';
 import { $, $$, esc, toast, fmtNum, fmtTime, fmtIso, nowSec, ago } from './ui.js';
 import { $t, tx, EN, LANG, watch, setLang, syncLang, dictError } from './i18n.js';
 import * as keep from './formkeep.js';
@@ -67,9 +67,10 @@ function paintNav(name) {
   const sub = $('#sub-nav');
   if (!g || g.pages.length < 2) { sub.hidden = true; sub.innerHTML = ''; return; }
   sub.hidden = false;
-  // 右端固定一个"本页帮助"：直接打开当前页面的使用说明
+  // 右端固定两个入口："本页导览"在当前页面上把关键位置圈出来讲一遍，"本页帮助"打开这一页的完整使用说明
   sub.innerHTML = g.pages.map(([id, label, desc]) => `<a href="#/${id}" class="${id === name ? 'on' : ''}" title="${esc(desc)}"${id === name ? ' aria-current="page"' : ''}>${esc(label)}</a>`).join('')
-    + `<span class="sp"></span><a class="sub-help" href="#/help/${name}" title="${$t("打开这一页的使用说明")}"><i aria-hidden="true">?</i><span>${$t("本页帮助")}</span></a>`;
+    + `<span class="sp"></span><span class="sub-tools"><button class="sub-help" type="button" data-page-tour title="${$t("把这一页的关键位置依次圈出来讲一遍")}"><i aria-hidden="true">▸</i><span>${$t("本页导览")}</span></button>`
+    + `<a class="sub-help" href="#/help/${name}" title="${$t("打开这一页的使用说明")}"><i aria-hidden="true">?</i><span>${$t("本页帮助")}</span></a></span>`;
   sub.querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
@@ -178,6 +179,20 @@ async function startTour() {
   if (!ui.state.tourSeen || !ui.state.welcomeOff) { ui.state.tourSeen = true; ui.state.welcomeOff = true; ui.commit(); }
 }
 
+/** 本页导览：在当前页面上把关键位置依次圈出来。页面没打开成功、或当前状态下没有可圈的位置时，如实提示 */
+async function startPageTour() {
+  if (touring) return;
+  const { name, args } = parseHash();
+  if (!name) return;
+  touring = true;
+  try {
+    const tour = await import('./tour.js');
+    const ok = current ? await tour.startPage(tourKey(name, args), name) : false;
+    if (!ok) toast($t("这一页现在没有可以圈出来讲的位置，请点旁边的\"本页帮助\"看说明"));
+  } catch (e) { console.error(e); toast($t("导览没能打开，请刷新后再试"), 'error'); }
+  touring = false;
+}
+
 function wireShell() {
   watch(); // 英文界面：core 与已保存数据里的中文在进入页面时翻译
   cmdk.init();
@@ -197,6 +212,7 @@ function wireShell() {
   applyNotice();
   $('#notice-toggle').addEventListener('click', () => { ui.state.noticeCollapsed = !ui.state.noticeCollapsed; ui.commit(); applyNotice(); });
   $('#data-status').addEventListener('click', () => { location.hash = '#/method'; });
+  $('#sub-nav').addEventListener('click', (e) => { if (e.target.closest('[data-page-tour]')) startPageTour(); });
   $('#view').addEventListener('click', (e) => {
     if (e.target.closest('[data-retry]')) (booted ? route() : boot());
     else if (e.target.closest('[data-cmdk]')) cmdk.open();

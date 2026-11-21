@@ -78,7 +78,7 @@ app.get('/api/fx', async (c) => {
 app.get('/api/health', (c) => c.json({ ok: true, version: VERSION }))
 app.all('/api/*', (c) => c.json({ error: '接口不存在' }, 404))
 
-const VERSION = '4.2.0'
+const VERSION = '4.3.0'
 const LOGO = `<svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#3d8bff"/><path d="M7.5 21.5l5.5-7.5 4 4 7.5-9.5" stroke="#fff" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24.5" cy="8.5" r="2.2" fill="#fff"/></svg>`
 
 // 页面只加载同源脚本与样式，接口只连同源：外部目录数据一律经本 Worker 代理

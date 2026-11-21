@@ -55,7 +55,7 @@ export function mount(el) {
   </div>
 
   <h3>${$t("哪些是真的，哪些是合成的，哪些只是示例")}</h3>
-  <div class="panel"><div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("数据")}</th><th>${$t("性质")}</th><th>${$t("来源与说明")}</th></tr></thead><tbody>
+  <div class="panel" id="m-data"><div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("数据")}</th><th>${$t("性质")}</th><th>${$t("来源与说明")}</th></tr></thead><tbody>
     <tr><td>${$t("模型目录（{0} 个）", S.models.length)}</td><td>${R}</td><td>${$t("OpenRouter 公开目录 API。{0}，时间 {1}。", S.catalogLive ? $t("本次打开时已实时拉取") : $t("当前为离线快照"), fmtIso(S.catalogAt))}</td></tr>
     <tr><td>${$t("分项费率、上下文、tokenizer、模态")}</td><td>${R}</td><td>${$t("同上。原始币种美元，按 USD/CNY {0}（open.er-api.com，{1}）换算，未含税。", S.fx.rate.toFixed(4), fmtIso(S.fx.asOf))}</td></tr>
     <tr><td>${$t("算力中心与公开报价（{0} 家、{1} 条）", S.centers.length, fmtInt(quotes))}</td><td>${R}</td><td>${$t("每个模型的部署端点：供应商、推理精度、费率、近1日可用率、状态。快照 {0}（{1}）；交易页可按需拉取单个模型的实时报价。", fmtIso(S.snapshotAt), ago(S.snapshotAt))}</td></tr>
@@ -94,7 +94,7 @@ export function mount(el) {
   <p>${$t("它不能证明的事同样重要：参考价上不一定有可买的容量；均线只描述历史，不是买卖信号。")}</p>
 
   <h3>${$t("行情规则（已实现并有单测覆盖）")}</h3>
-  <div class="panel"><div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("规则")}</th><th>${$t("实现")}</th><th>${$t("方案出处")}</th></tr></thead><tbody>
+  <div class="panel" id="m-rules"><div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("规则")}</th><th>${$t("实现")}</th><th>${$t("方案出处")}</th></tr></thead><tbody>
     <tr><td>${$t("固定篮子参考价")}</td><td>${$t("{0}% 输入 + {1}% 输出。输入 2 元、输出 6 元 → 2.8 元。任一分项缺失就不计算。", BASKET.in * 100, BASKET.out * 100)}</td><td>§06</td></tr>
     <tr><td>${$t("有观测才有蜡烛")}</td><td>${$t("当日无样本则留空，不复制前收制造成交。")}</td><td>§07</td></tr>
     <tr><td>${$t("单样本")}</td><td>${$t("只有一笔时开高低收相同，并标注\"单样本\"。")}</td><td>§07</td></tr>
@@ -115,7 +115,7 @@ export function mount(el) {
   <p>${$t("交易页的盘口、限价单和连续撮合属于\"市场机制研究\"：用来观察稀疏样本下的波动、折价和成交困难，只使用研究记分——期初 {0}，不可充值、不可转让、不可兑换、不挂钩奖品。方案 V4.0 G10 写明订单簿、AMM、保证金、借贷和金融衍生品只列后续研究；版权和异质服务走协议挂牌与询价，不拿通用撮合盘掩盖不可比产品。所以撮合界面只用在同规格的模型服务行情上，是研究与演示用，不是首期上线形态。挂牌大厅里未成交就显示无成交，不用仿真数据填 K 线。", fmtInt(account.INITIAL))}</p>
 
   <h3>${$t("V4.0 增量验收项对照（G24）")}</h3>
-  <div class="panel"><div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("编号")}</th><th>${$t("方案要求的阻断或验收测试")}</th><th>${$t("本环境")}</th><th>${$t("程度")}</th></tr></thead><tbody>
+  <div class="panel" id="m-accept"><div class="table-wrap"><table class="tbl"><thead><tr><th>${$t("编号")}</th><th>${$t("方案要求的阻断或验收测试")}</th><th>${$t("本环境")}</th><th>${$t("程度")}</th></tr></thead><tbody>
     ${X.map(([id, need, how, lvl]) => `<tr><td><b>${id}</b></td><td>${need}</td><td>${how}</td><td>${lvl}</td></tr>`).join('')}
   </tbody></table></div></div>
   <p class="mute">${$t("\"已做\"指规则在浏览器里真实执行并有单测覆盖；它证明的是机制能跑通，不是生产系统已通过验收。三种\"可信\"要分别证明：技术可信（记录完整、授权受控）、权利可信（有效授权链、可执行合同）、经营可信（真实外部付费与回款）。本站只触及第一种的一小部分。")}</p>

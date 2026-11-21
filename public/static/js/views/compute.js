@@ -142,7 +142,7 @@ function mountDetail(el, name) {
   const rows = [...c.rows].sort((a, b) => a.rank - b.rank || b.inst.suppliers - a.inst.suppliers);
   const real = S.history.flatMap((v) => v.changes.filter((x) => x.p === c.name).map((x) => ({ ...x, from: v.from, to: v.to })));
   const span = S.history.length ? `${fmtIso(S.history[0].from)} → ${fmtIso(S.history.at(-1).to)}` : '';
-  const realHtml = !S.history.length ? '' : `<section class="panel" style="margin-bottom:12px">
+  const realHtml = !S.history.length ? '' : `<section class="panel" id="c-real" style="margin-bottom:12px">
     <header><h3>${$t("该中心的真实调价")}</h3>${REAL}<span class="mute small">${$t("同一端点前后两次快照 · {0}", span)}</span></header>
     ${real.length ? `<div class="table-wrap"><table class="tbl dense"><thead><tr><th>${$t("模型")}</th><th>${$t("精度")}</th><th class="num">${$t("原固定篮子价")}</th><th class="num">${$t("现固定篮子价")}</th><th class="num">${$t("变动")}</th><th>${$t("观测区间")}</th></tr></thead><tbody>
     ${real.slice(0, 30).map((x) => `<tr><td>${esc(S.modelById.get(x.id)?.name || x.id)}</td><td>${esc(x.q === 'unknown' ? $t("未声明") : x.q.toUpperCase())}</td><td class="num">${fmtPx(x.a * S.fx.rate)}</td><td class="num">${fmtPx(x.b * S.fx.rate)}</td><td class="num ${dir(x.b - x.a)}">${fmtPct(x.b / x.a - 1)}</td><td class="small">${fmtIso(x.from).slice(5)} → ${fmtIso(x.to).slice(5)}</td></tr>`).join('')}
@@ -162,7 +162,7 @@ function mountDetail(el, name) {
     <header><h3>${$t("该中心所服务桶的报价指数")}</h3>${SYN}<span class="sp"></span><span class="mute small">${$t("{0} 天前 = 100 · 仅最右一点基于真实报价", BACK)}</span></header>
     <div class="chart" id="c-chart" style="height:220px"></div>
   </section>
-  <section class="panel">
+  <section class="panel" id="svc">
     <header><h3>${$t("在售服务与公开报价")}</h3>${REAL}<span class="mute small">${$t("快照 {0}", fmtIso(S.snapshotAt))}</span></header>
     <div class="table-wrap"><table class="tbl dense"><thead><tr><th>${$t("模型 / 桶")}</th><th class="num">${$t("输入")}</th><th class="num">${$t("输出")}</th><th class="num">${$t("固定篮子参考价")}</th><th class="num">${$t("桶内排名")}</th><th class="num">${$t("较桶内最低")}</th><th class="num">${$t("近1日可用率")}</th><th>${$t("状态")}</th></tr></thead><tbody>
     ${rows.map((r) => `<tr class="click" data-inst="${esc(r.inst.id)}"><td>${esc(r.inst.name)}<span class="chip sm">${esc(r.inst.qLabel)}</span></td>
