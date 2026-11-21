@@ -26,6 +26,7 @@ export const GROUPS = [
     ['bay', '词元出海', '国产模型在境外的部署与报价'],
     ['method', '方法与边界', '哪些是真的、哪些是合成的'],
   ] },
+  { id: 'help', name: '帮助', pages: [['help', '帮助中心', '产品手册、分角色上手、常见问题']] },
 ];
 export const PAGES = GROUPS.flatMap((g) => g.pages.map(([id, name, desc]) => ({ id, name, desc, group: g.id, groupName: g.name })));
 export const pageOf = (id) => PAGES.find((p) => p.id === id);

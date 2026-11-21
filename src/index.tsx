@@ -78,7 +78,7 @@ app.get('/api/fx', async (c) => {
 app.get('/api/health', (c) => c.json({ ok: true, version: VERSION }))
 app.all('/api/*', (c) => c.json({ error: '接口不存在' }, 404))
 
-const VERSION = '4.1.1'
+const VERSION = '4.2.0'
 const LOGO = `<svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#3d8bff"/><path d="M7.5 21.5l5.5-7.5 4 4 7.5-9.5" stroke="#fff" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24.5" cy="8.5" r="2.2" fill="#fff"/></svg>`
 
 // 页面只加载同源脚本与样式，接口只连同源：外部目录数据一律经本 Worker 代理
@@ -129,9 +129,10 @@ app.get('/', (c) => {
     <span class="brand-text"><span class="brand-name">${T('澳门词元中心')}</span><span class="brand-sub">${T('AI 产业交易仿真')}</span></span>
     <span class="brand-tag" title="${T('拟议名称：不是已核准登记的名称，不是广州数据交易所澳门分支，未取得交易所或金融业务许可')}">${T('拟议 · 仿真')}</span>
   </a>
-  <nav id="main-nav" aria-label="${T('主导航')}">${GROUPS.map((g: any) => `<a href="#/${g.pages[0][0]}" data-group="${g.id}">${T(g.name)}</a>`).join('')}</nav>
+  <nav id="main-nav" aria-label="${T('主导航')}">${GROUPS.filter((g: any) => g.id !== 'help').map((g: any) => `<a href="#/${g.pages[0][0]}" data-group="${g.id}">${T(g.name)}</a>`).join('')}</nav>
   <div class="top-right">
     <button id="cmdk-btn" class="search-btn" type="button" title="${T('搜索页面、模型、算力中心、挂牌（Ctrl / ⌘ + K）')}"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span>${T('搜索')}</span><kbd>Ctrl K</kbd></button>
+    <a id="help-btn" class="search-btn help-btn" href="#/help" title="${T('帮助中心：产品手册与新手导览')}" aria-label="${T('帮助中心')}"><i aria-hidden="true">?</i><span>${T('帮助')}</span></a>
     <button id="data-status" class="chip" type="button" title="${T('数据来源与新鲜度')}">${T('数据加载中')}</button>
     <a id="member-chip" class="chip" href="#/access" title="${T('入场状态')}">${T('未入场')}</a>
     <a id="top-balance" class="balance" href="#/assets" title="${T('研究记分：不可充值、不可转让、不可兑换')}"><span>${T('研究记分')}</span><b>—</b></a>
@@ -148,6 +149,7 @@ app.get('/', (c) => {
   <span id="foot-store" title="${T('本机存储状态')}">${T('本机存储检查中')}</span>
   <span id="foot-net">${T('网络正常')}</span>
   <span class="sp"></span>
+  <a href="#/help">${T('帮助中心')}</a>
   <a href="#/method">${T('方法与边界')}</a>
   <span>${T('不代表广州数据交易所或任何机构的官方意见')}</span>
 </footer>

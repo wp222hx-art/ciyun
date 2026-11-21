@@ -11,7 +11,9 @@
     "snapshot": "node scripts/snapshot.mjs",
     "dev:sandbox": "wrangler pages dev dist --ip 0.0.0.0 --port 3000",
     "clean-port": "fuser -k 3000/tcp 2>/dev/null || true",
-    "i18n:check": "node scripts/i18n-check.mjs"
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "help:shots": "node scripts/help-shots.mjs",
+    "help:pdf": "node scripts/help-pdf.mjs"
   },
   "dependencies": {
     "hono": "^4.13.14"

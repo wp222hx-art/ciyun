@@ -7,6 +7,7 @@ import * as entitle from '../core/entitle.js';
 import * as evidence from '../core/evidence.js';
 import { $, esc, fmtInt, fmtPct, fmtUsd, dir, nowSec, REAL, SYN, EXAMPLE, CLOSED, tag } from '../ui.js';
 import { $t } from '../i18n.js';
+import { ui } from '../uistate.js';
 
 const CHAIN = [
   [$t("资源"), $t("算力／模型服务"), $t("公开目录里的真实报价"), 'compute'],
@@ -39,6 +40,8 @@ export function mount(el) {
   const tradable = S.insts.filter((i) => i.meets).length;
 
   el.innerHTML = `
+  ${ui.state.welcomeOff ? '' : `<section class="welcome" id="welcome"><p><b>${$t("第一次来？")}</b>${$t("花一分钟认一遍界面，或者直接按角色看怎么用。")}</p>
+    <div class="btn-row"><button class="btn sm primary" type="button" data-tour>${$t("开始新手导览")}</button><a class="btn sm" href="#/help/start">${$t("十分钟快速上手")}</a><a class="btn sm" href="#/help">${$t("帮助中心")}</a><button class="btn sm ghost" type="button" id="welcome-x">${$t("不再显示")}</button></div></section>`}
   <section class="hero">
     <p class="eyebrow">${$t("拟议名称 · 正式登记及相关品牌授权待确认 · 方案 V4.0")}</p>
     <h1>${$t("澳门词元中心：把可核实、可授权、可交付的 AI 供给，接进真实创收应用")}</h1>
@@ -135,6 +138,11 @@ export function mount(el) {
     $('#k-idx-sub', el).innerHTML = `<span class="num ${dir(chg)}">${fmtPct(chg)}</span> ${$t("较上一发布日")}`;
   }
 
+  el.addEventListener('click', (e) => {
+    if (!e.target.closest('#welcome-x')) return;
+    ui.state.welcomeOff = true; ui.commit();
+    $('#welcome', el)?.remove();
+  });
   const offs = [access.onChange(() => { paintQuick(); paintStats(); }), rights.db.onChange(paintStats), entitle.db.onChange(paintStats)];
   paintQuick(); paintStats(); paintIndex(now0);
   let n = 0;

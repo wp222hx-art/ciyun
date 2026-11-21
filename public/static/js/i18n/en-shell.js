@@ -6,6 +6,9 @@ export default {
   '跳到主要内容': 'Skip to main content',
   '澳门词元中心（拟议）首页': 'Macau Token Centre (proposed) home',
   '澳门词元中心': 'Macau Token Centre',
+  '帮助': 'Help',
+  '帮助中心': 'Help centre',
+  '帮助中心：产品手册与新手导览': 'Help centre: product manual and guided tour',
   '澳门词元中心（拟议）': 'Macau Token Centre (proposed)',
   'AI 产业交易仿真': 'AI industry exchange · simulation',
   '拟议名称：不是已核准登记的名称，不是广州数据交易所澳门分支，未取得交易所或金融业务许可':

@@ -8,6 +8,7 @@ import { GROUPS, pageOf, groupOf, HOME } from './nav.js';
 import { $, $$, esc, toast, fmtNum, fmtTime, fmtIso, nowSec, ago } from './ui.js';
 import { $t, tx, EN, LANG, watch, setLang, syncLang, dictError } from './i18n.js';
 import * as keep from './formkeep.js';
+import { ui } from './uistate.js';
 
 const loaders = {
   home: () => import('./views/home.js'),
@@ -28,9 +29,9 @@ const loaders = {
   finance: () => import('./views/finance.js'),
   bay: () => import('./views/bay.js'),
   method: () => import('./views/method.js'),
+  help: () => import('./views/help.js'),
 };
 
-const ui = store.persisted('zjt.ui.v1', () => ({ v: 1, noticeCollapsed: false, lastInGroup: {} }));
 let current = null;
 let currentName = '';
 let token = 0;
@@ -66,7 +67,9 @@ function paintNav(name) {
   const sub = $('#sub-nav');
   if (!g || g.pages.length < 2) { sub.hidden = true; sub.innerHTML = ''; return; }
   sub.hidden = false;
-  sub.innerHTML = g.pages.map(([id, label, desc]) => `<a href="#/${id}" class="${id === name ? 'on' : ''}" title="${esc(desc)}"${id === name ? ' aria-current="page"' : ''}>${esc(label)}</a>`).join('');
+  // 右端固定一个"本页帮助"：直接打开当前页面的使用说明
+  sub.innerHTML = g.pages.map(([id, label, desc]) => `<a href="#/${id}" class="${id === name ? 'on' : ''}" title="${esc(desc)}"${id === name ? ' aria-current="page"' : ''}>${esc(label)}</a>`).join('')
+    + `<span class="sp"></span><a class="sub-help" href="#/help/${name}" title="${$t("打开这一页的使用说明")}"><i aria-hidden="true">?</i><span>${$t("本页帮助")}</span></a>`;
   sub.querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
@@ -161,6 +164,20 @@ function applyNotice() {
   b.setAttribute('aria-expanded', String(!ui.state.noticeCollapsed));
 }
 
+/** 新手引导：按需加载。走完或中途关闭都记为"看过"，首页的欢迎条不再出现 */
+let touring = false;
+async function startTour() {
+  if (touring) return;
+  touring = true;
+  try {
+    const tour = await import('./tour.js');
+    await tour.start();
+  } catch (e) { console.error(e); toast($t("导览没能打开，请刷新后再试"), 'error'); }
+  touring = false;
+  $('#welcome')?.remove();
+  if (!ui.state.tourSeen || !ui.state.welcomeOff) { ui.state.tourSeen = true; ui.state.welcomeOff = true; ui.commit(); }
+}
+
 function wireShell() {
   watch(); // 英文界面：core 与已保存数据里的中文在进入页面时翻译
   cmdk.init();
@@ -183,6 +200,7 @@ function wireShell() {
   $('#view').addEventListener('click', (e) => {
     if (e.target.closest('[data-retry]')) (booted ? route() : boot());
     else if (e.target.closest('[data-cmdk]')) cmdk.open();
+    else if (e.target.closest('[data-tour]')) startTour();
   });
   window.addEventListener('hashchange', () => { if (booted) route(); });
   window.addEventListener('online', () => { paintNet(); toast($t("网络已恢复"), 'ok'); });

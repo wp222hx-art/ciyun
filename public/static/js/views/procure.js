@@ -128,7 +128,7 @@ export function mount(el) {
       : $t("本次询价中，Token 单价最低的供给同时也是单合格任务成本最低的。");
     box.innerHTML = `${head}
       <p class="pad small" style="color:#c5cad3">${$t("共")} <b>${rfq.rows.length}</b> ${$t("条报价满足全部约束，按单合格任务有效成本从低到高排列，显示前 {0} 条。{1}", top.length, insight)}<br><span class="mute">${$t("被排除：{0}", exText || $t("无"))}</span></p>
-      <div class="table-wrap"><table class="tbl dense"><thead><tr><th>#</th><th>${$t("模型 / 桶")}</th><th>${$t("供应商")}</th><th>${$t("机房")}</th><th class="num">${$t("输入")}</th><th class="num">${$t("输出")}</th><th class="num">${$t("合格率")}</th><th class="num">${$t("单合格任务成本")}</th><th class="num">${$t("账期预计")}</th><th class="num">${$t("可用率")}</th><th>${$t("推荐理由")}</th><th></th></tr></thead><tbody>
+      <div class="table-wrap"><table class="tbl dense"><thead><tr><th>#</th><th>${$t("模型 / 桶")}</th><th>${$t("供应商")}</th><th>${$t("机房")}</th><th class="num">${$t("输入")}</th><th class="num">${$t("输出")}</th><th class="num">${$t("合格率")}</th><th class="num">${$t("单合格任务成本")}</th><th class="num">${$t("账期预计")}</th><th class="num">${$t("可用率")}</th><th>${$t("推荐理由")}</th><th class="stick-r"></th></tr></thead><tbody>
       ${top.map((r, i) => {
         const c = S.providerByName.get(r.q.p);
         const why = i === 0 ? $t("满足全部约束后成本最低") : r === ct ? $t("Token 单价最低") : r.pass === Math.max(...top.map((x) => x.pass)) ? $t("合格率最高") : '';
@@ -136,7 +136,7 @@ export function mount(el) {
           <td>${esc(r.q.p)}</td><td class="small">${c && c.dcs.length ? c.dcs.map((d) => esc(market.regionName(d))).join($t("、")) : `<span class="mute">${$t("未披露")}</span>`}</td>
           <td class="num">${fmtPx(r.q.cny.in)}</td><td class="num">${fmtPx(r.q.cny.out)}</td><td class="num">${(r.pass * 100).toFixed(1)}%</td>
           <td class="num"><b>${r.unit.toFixed(4)}</b></td><td class="num">${fmtNum(r.monthly)}</td><td class="num">${r.q.up1d == null ? '—' : `${r.q.up1d.toFixed(1)}%`}</td>
-          <td class="small">${why}</td><td><button class="btn sm primary" data-sign="${i}">${$t("签约")}</button></td></tr>`;
+          <td class="small">${why}</td><td class="stick-r"><button class="btn sm primary" data-sign="${i}">${$t("签约")}</button></td></tr>`;
       }).join('')}</tbody></table></div>
       <p class="pad mute small">${$t("单合格任务有效成本 =（单次推理费 + 单次复核费）÷ 合格率。任务规格：每次 {0} 输入 / {1} 输出 Token，复核 {2} 元/次〔示例假设〕。排序只看约束与成本，不含付费推广。合格率是合成演示值，没有做真实同题评测。", rfq.task.inTok, rfq.task.outTok, rfq.task.review)}</p>`;
   }
